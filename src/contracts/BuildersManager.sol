@@ -22,21 +22,23 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
 
   // --- Data ---
 
-  /// @notice See params
+  /// @notice See params @IBuildersManager
   BuilderManagerParams internal _params;
 
   /// @inheritdoc IBuildersManager
-  mapping(address _voter => bool _isEligibleAndVouched) public eligibleVoter;
+  mapping(address _attester => bool _isEligible) public optimismFoundationAttester;
   /// @inheritdoc IBuildersManager
-  mapping(address _project => uint256 _expiry) public projectToExpiry;
+  mapping(address _voter => bool _isEligibleAndVouched) public eligibleVoter;
   /// @inheritdoc IBuildersManager
   mapping(bytes32 _attestHash => address _project) public eligibleProject;
   /// @inheritdoc IBuildersManager
+  mapping(address _project => uint256 _expiry) public projectToExpiry;
+  /// @inheritdoc IBuildersManager
   mapping(address _project => uint256 _totalVouches) public projectToVouches;
   /// @inheritdoc IBuildersManager
-  mapping(address _voter => mapping(bytes32 _attestHash => bool _vouched)) public userToProjectVouch;
+  mapping(address _voter => mapping(bytes32 _attestHash => bool _vouched)) public voterToProjectVouch;
 
-  /// @notice See currentProjects
+  /// @notice See currentProjects @IBuildersManager
   address[] internal _currentProjects;
 
   // --- Modifiers ---
@@ -46,7 +48,7 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
    * @param _projectApprovalAttestation The attestation hash of the project's approval
    */
   modifier vouched(bytes32 _projectApprovalAttestation) {
-    if (userToProjectVouch[msg.sender][_projectApprovalAttestation]) revert AlreadyVouched();
+    if (voterToProjectVouch[msg.sender][_projectApprovalAttestation]) revert AlreadyVouched();
     _;
   }
 
@@ -63,6 +65,11 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
     token = BuildersDollar(_token);
     eas = IEAS(_eas);
     _params = __params;
+
+    uint256 _l = _params.optimismFoundationAttesters.length;
+    for (uint256 _i; _i < _l; ++_i) {
+      optimismFoundationAttester[_params.optimismFoundationAttesters[_i]] = true;
+    }
   }
 
   // --- External Methods ---
@@ -82,12 +89,6 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
       if (!_validateOptimismVoter(_identityAttestation, msg.sender)) revert InvalidIdAttestation();
     }
     _vouch(_projectApprovalAttestation);
-  }
-
-  /// @inheritdoc IBuildersManager
-  function ejectProject(address _project) external {
-    // TODO: Add security - who can eject a project?
-    _ejectProject(_project);
   }
 
   /// @inheritdoc IBuildersManager
@@ -116,6 +117,34 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
   }
 
   /// @inheritdoc IBuildersManager
+  function ejectProject(address _project) external onlyOwner {
+    _ejectProject(_project);
+  }
+
+  /// @inheritdoc IBuildersManager
+  function modifyParams(bytes32 _param, uint256 _value) external onlyOwner {
+    _modifyParams(_param, _value);
+  }
+
+  /// @inheritdoc IBuildersManager
+  function updateOpFoundationAttester(address _attester, bool _valid) external onlyOwner {
+    _modifyOpFoundationAttester(_attester, _valid);
+  }
+
+  /// @inheritdoc IBuildersManager
+  function batchUpdateOpFoundationAttesters(
+    address[] memory _attestersToUpdate,
+    bool[] memory _actions
+  ) external onlyOwner {
+    uint256 _l = _attestersToUpdate.length;
+    if (_l != _actions.length) revert InvalidLength();
+
+    for (uint256 _i; _i < _l; _i++) {
+      _modifyOpFoundationAttester(_attestersToUpdate[_i], _actions[_i]);
+    }
+  }
+
+  /// @inheritdoc IBuildersManager
   function params() external view returns (BuilderManagerParams memory __params) {
     __params = _params;
   }
@@ -126,36 +155,11 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
   }
 
   /// @inheritdoc IBuildersManager
-  function optimismFoundationAttestors() external view returns (address[] memory _opAttestors) {
-    _opAttestors = _params.optimismFoundationAttestors;
+  function optimismFoundationAttesters() external view returns (address[] memory _opAttesters) {
+    _opAttesters = _params.optimismFoundationAttesters;
   }
 
   // --- Public Methods ---
-
-  // TODO: Does this need to be public or can it be internal?
-  /// @inheritdoc IBuildersManager
-  function validateProject(bytes32 _approvalAttestation) public virtual returns (bool _valid) {
-    if (isValidProject(_approvalAttestation)) revert AlreadyValid();
-
-    Attestation memory _attestation = eas.getAttestation(_approvalAttestation);
-    if (_attestation.uid == bytes32(0)) revert AttestationNotFound();
-    if (!_isValidAttestor(_attestation.attester)) revert InvalidOpAttestor();
-    if (_attestation.time < _params.currentSeasonExpiry - _params.seasonDuration) revert NotInSeason();
-
-    (string memory _param1,,,, string memory _param5) =
-      abi.decode(_attestation.data, (string, string, string, string, string));
-
-    if (keccak256(bytes(_param1)) != _GRANTEE_HASH) revert InvalidParam(bytes(_param1));
-    if (keccak256(bytes(_param5)) != _APPLICATION_APPROVED_HASH) revert InvalidParam(bytes(_param5));
-
-    address _project = _attestation.recipient;
-    _currentProjects.push(_project);
-    eligibleProject[_approvalAttestation] = _project;
-    projectToExpiry[_project] = _params.currentSeasonExpiry;
-
-    emit ProjectValidated(_approvalAttestation, _project);
-    _valid = true;
-  }
 
   /// @inheritdoc IBuildersManager
   function isValidProject(bytes32 _approvalAttestation) public view returns (bool _valid) {
@@ -164,13 +168,14 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
 
   // --- Internal Utilities ---
 
+  // TODO: add that voter already vouched for a project
   /**
-   * @notice Check if the project has been previously vouched for
+   * @notice Compare the attestation hash of the project's approval and validate the project
    * @param _projectApprovalAttestation The attestation hash of the project's approval
    */
   function _vouch(bytes32 _projectApprovalAttestation) internal {
     if (eligibleProject[_projectApprovalAttestation] == address(0)) {
-      validateProject(_projectApprovalAttestation);
+      _validateProject(_projectApprovalAttestation);
     }
   }
 
@@ -183,7 +188,7 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
   function _validateOptimismVoter(bytes32 _identityAttestation, address _claimer) internal returns (bool _valid) {
     Attestation memory _attestation = eas.getAttestation(_identityAttestation);
     if (_attestation.uid == bytes32(0)) revert AttestationNotFound();
-    if (!_isValidAttestor(_attestation.attester)) revert InvalidOpAttestor();
+    if (!optimismFoundationAttester[_attestation.attester]) revert InvalidOpAttester();
     if (_attestation.recipient != _claimer) revert NotRecipient();
 
     (uint256 farcasterID,,,,) = abi.decode(_attestation.data, (uint256, string, string, string, string));
@@ -194,8 +199,36 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
   }
 
   /**
-   * @notice Remove project from the current projects list and zero out the vouches
-   * @param _project The project
+   * @notice Function to validate the project's attestation
+   * @param _approvalAttestation The attestation hash of the project's approval
+   * @return _valid True if the project is valid
+   */
+  function _validateProject(bytes32 _approvalAttestation) internal returns (bool _valid) {
+    if (isValidProject(_approvalAttestation)) revert AlreadyValid();
+
+    Attestation memory _attestation = eas.getAttestation(_approvalAttestation);
+    if (_attestation.uid == bytes32(0)) revert AttestationNotFound();
+    if (!optimismFoundationAttester[_attestation.attester]) revert InvalidOpAttester();
+    if (_attestation.time < _params.currentSeasonExpiry - _params.seasonDuration) revert NotInSeason();
+
+    (string memory _param1,,,, string memory _param5) =
+      abi.decode(_attestation.data, (string, string, string, string, string));
+
+    if (keccak256(bytes(_param1)) != _GRANTEE_HASH) revert InvalidParamBytes(bytes(_param1));
+    if (keccak256(bytes(_param5)) != _APPLICATION_APPROVED_HASH) revert InvalidParamBytes(bytes(_param5));
+
+    address _project = _attestation.recipient;
+    _currentProjects.push(_project);
+    eligibleProject[_approvalAttestation] = _project;
+    projectToExpiry[_project] = _params.currentSeasonExpiry;
+
+    emit ProjectValidated(_approvalAttestation, _project);
+    _valid = true;
+  }
+
+  /**
+   * @notice See ejectProject @IBuildersManager
+   * @param _project The project to eject
    */
   function _ejectProject(address _project) internal {
     projectToExpiry[_project] = 0;
@@ -203,7 +236,6 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
 
     uint256 _l = _currentProjects.length;
     for (uint256 _i; _i < _l; _i++) {
-      // TODO: Does this work?
       if (_currentProjects[_i] == _project) {
         _currentProjects[_i] = _currentProjects[_l - 1];
         _currentProjects.pop();
@@ -212,14 +244,41 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
   }
 
   /**
-   * @notice Check if the attester is one of the Optimism Foundation attestors
-   * @param _attester The address of the attester
-   * @return _isValid True if the attester is one of the Optimism Foundation attestors
+   * @notice See modifyParams @IBuildersManager
+   * @param _param The parameter to modify
+   * @param _value The new value
    */
-  function _isValidAttestor(address _attester) internal view returns (bool _isValid) {
-    uint256 _l = _params.optimismFoundationAttestors.length;
-    for (uint256 _i; _i < _l; _i++) {
-      if (_attester == _params.optimismFoundationAttestors[_i]) _isValid = true;
+  function _modifyParams(bytes32 _param, uint256 _value) internal {
+    if (_param == 'cycleLength') _params.cycleLength = uint64(_value);
+    else if (_param == 'lastClaimedTimestamp') _params.lastClaimedTimestamp = uint64(_value);
+    else if (_param == 'currentSeasonExpiry') _params.currentSeasonExpiry = uint64(_value);
+    else if (_param == 'seasonDuration') _params.seasonDuration = _value;
+    else if (_param == 'minVouches') _params.minVouches = _value;
+    else if (_param == 'precision') _params.precision = _value;
+    else revert InvalidParamBytes32(_param);
+  }
+
+  /**
+   * @notice See updateOpFoundationAttester @IBuildersManager
+   * @param _attester The attester address
+   * @param _valid The attester status
+   */
+  function _modifyOpFoundationAttester(address _attester, bool _valid) internal {
+    bool _currentStatus = optimismFoundationAttester[_attester];
+    if (_currentStatus == _valid) revert AlreadyUpdated(_attester);
+
+    optimismFoundationAttester[_attester] = _valid;
+
+    if (_valid) {
+      _params.optimismFoundationAttesters.push(_attester);
+    } else {
+      uint256 _l = _params.optimismFoundationAttesters.length;
+      for (uint256 _i; _i < _l; _i++) {
+        if (_params.optimismFoundationAttesters[_i] == _attester) {
+          _params.optimismFoundationAttesters[_i] = _params.optimismFoundationAttesters[_l - 1];
+          _params.optimismFoundationAttesters.pop();
+        }
+      }
     }
   }
 }

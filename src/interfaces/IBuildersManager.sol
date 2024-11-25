@@ -12,7 +12,7 @@ import {IEAS} from '@eas/IEAS.sol';
 interface IBuildersManager {
   /*///////////////////////////////////////////////////////////////
                             DATA
-  //////////////////////////////////////////////////////////////*/
+    //////////////////////////////////////////////////////////////*/
   /**
    * @notice Builder Manager Parameters
    * @param cycleLength The yield distribution cycle length
@@ -21,7 +21,7 @@ interface IBuildersManager {
    * @param seasonDuration The duration of a season
    * @param minVouches The minimum number of vouches required for a project to receive yield
    * @param precision The division precision for yield distribution calculations
-   * @param optimismFoundationAttestors The list of attesting addresses for the OP Foundation
+   * @param optimismFoundationAttesters The list of attesting addresses for the OP Foundation
    */
   struct BuilderManagerParams {
     uint64 cycleLength;
@@ -30,12 +30,12 @@ interface IBuildersManager {
     uint256 seasonDuration;
     uint256 minVouches;
     uint256 precision;
-    address[] optimismFoundationAttestors;
+    address[] optimismFoundationAttesters;
   }
 
   /*///////////////////////////////////////////////////////////////
                             EVENTS
-  //////////////////////////////////////////////////////////////*/
+    //////////////////////////////////////////////////////////////*/
   /**
    * @notice Emitted when a project is validated
    * @param _approvalAttestation The attestation hash
@@ -59,8 +59,11 @@ interface IBuildersManager {
 
   /*///////////////////////////////////////////////////////////////
                             ERRORS
-  //////////////////////////////////////////////////////////////*/
+    //////////////////////////////////////////////////////////////*/
 
+  /// @notice Throws when the parameter is already set
+  /// @param _attester The attester address
+  error AlreadyUpdated(address _attester);
   /// @notice Throws when the project is already valid
   error AlreadyValid();
   /// @notice Throws when the voter is already vouched
@@ -71,23 +74,28 @@ interface IBuildersManager {
   error IdAttestationRequired();
   /// @notice Throws when the identification-attestation is invalid
   error InvalidIdAttestation();
-  /// @notice Throws when the attestor is not in the OP Foundation list
-  error InvalidOpAttestor();
-  /// @notice Throws when the parameter is incorrect
+  /// @notice Throws when the array length is invalid
+  error InvalidLength();
+  /// @notice Throws when the attester is not in the OP Foundation list
+  error InvalidOpAttester();
+  /// @notice Throws when the bytes32 parameter is incorrect
   /// @param _param The invalid parameter
-  error InvalidParam(bytes _param);
-  /// @notice Throws when the project is not eligible
-  error NotRecipient();
+  error InvalidParamBytes32(bytes32 _param);
+  /// @notice Throws when the bytes parameter is incorrect
+  /// @param _param The invalid parameter
+  error InvalidParamBytes(bytes _param);
   /// @notice Throws when the project is not in season
   error NotInSeason();
-  /// @notice Throws when the project is not in the current projects list
-  error YieldNotReady();
+  /// @notice Throws when the project is not eligible
+  error NotRecipient();
   /// @notice Throws when the project is not found
   error YieldNoProjects();
+  /// @notice Throws when the project is not in the current projects list
+  error YieldNotReady();
 
   /*///////////////////////////////////////////////////////////////
                             LOGIC
-  //////////////////////////////////////////////////////////////*/
+    //////////////////////////////////////////////////////////////*/
   /**
    * @notice Initialize the BuildersManager contract
    * @param _token The BuildersDollar token address
@@ -112,24 +120,40 @@ interface IBuildersManager {
   function vouch(bytes32 _projectApprovalAttestation, bytes32 _identityAttestation) external;
 
   /**
+   * @notice Distribute the yield to the current projects in the cycle
+   */
+  function distributeYield() external;
+
+  /**
    * @notice Remove project from the current projects list and zero out the vouches
    * @param _project The project
    */
   function ejectProject(address _project) external;
 
-  /// @notice Distribute the yield to the current projects in the cycle
-  function distributeYield() external;
+  /**
+   * @notice Modify the BuilderManager parameters
+   * @param _param The parameter to modify
+   * @param _value The new value for the parameter
+   */
+  function modifyParams(bytes32 _param, uint256 _value) external;
 
   /**
-   * @notice Function to validate the project's attestation
-   * @param _approvalAttestation The attestation hash of the project's approval
-   * @return _valid True if the project is valid
+   * @notice Update the status of multiple OP Foundation attesters
+   * @param _attestersToUpdate The list of OP Foundation attesters to modify
+   * @param _actions The list of actions to take for the attesters (true = add, false = remove)
    */
-  function validateProject(bytes32 _approvalAttestation) external returns (bool _valid);
+  function batchUpdateOpFoundationAttesters(address[] memory _attestersToUpdate, bool[] memory _actions) external;
+
+  /**
+   * @notice Update the status of a OP Foundation attester
+   * @param _attester The OP Foundation attester to modify
+   * @param _valid The action to take for the attester (true = add, false = remove)
+   */
+  function updateOpFoundationAttester(address _attester, bool _valid) external;
 
   /*///////////////////////////////////////////////////////////////
                             VIEW
-  //////////////////////////////////////////////////////////////*/
+    //////////////////////////////////////////////////////////////*/
   /**
    * @notice Get the Builder's Dollar Token
    * @return _builderToken The Builder Token
@@ -143,6 +167,13 @@ interface IBuildersManager {
   function eas() external view returns (IEAS _eas);
 
   /**
+   * @notice Check if the attester is an Optimism Foundation Attester
+   * @param _attester The attester
+   * @return _isEligible True if the attester is an Optimism Foundation Attester
+   */
+  function optimismFoundationAttester(address _attester) external view returns (bool _isEligible);
+
+  /**
    * @notice Check if the voter is eligible and vouched
    * @param _voter The voter
    * @return _isEligibleAndVouched True if the voter is eligible and vouched
@@ -150,18 +181,18 @@ interface IBuildersManager {
   function eligibleVoter(address _voter) external view returns (bool _isEligibleAndVouched);
 
   /**
-   * @notice Get the expiry for a project
-   * @param _project The project
-   * @return _expiry The expiration timestamp for the project
-   */
-  function projectToExpiry(address _project) external view returns (uint256 _expiry);
-
-  /**
    * @notice Check if the project is eligible
    * @param _attestHash The attestation hash
    * @return _project The project
    */
   function eligibleProject(bytes32 _attestHash) external view returns (address _project);
+
+  /**
+   * @notice Get the expiry for a project
+   * @param _project The project
+   * @return _expiry The expiration timestamp for the project
+   */
+  function projectToExpiry(address _project) external view returns (uint256 _expiry);
 
   /**
    * @notice Get the total vouches for a project
@@ -176,7 +207,7 @@ interface IBuildersManager {
    * @param _attestHash The attestation hash
    * @return _vouched True if the user has vouched for the project
    */
-  function userToProjectVouch(address _voter, bytes32 _attestHash) external view returns (bool _vouched);
+  function voterToProjectVouch(address _voter, bytes32 _attestHash) external view returns (bool _vouched);
 
   /**
    * @notice Get the current BuilderManager parameters
@@ -191,10 +222,10 @@ interface IBuildersManager {
   function currentProjects() external view returns (address[] memory _projects);
 
   /**
-   * @notice Get the OP Foundation Attestors
-   * @return _optimismFoundationAttestors The list of OP Foundation Attestors
+   * @notice Get the OP Foundation Attesters
+   * @return _optimismFoundationAttesters The list of OP Foundation Attesters
    */
-  function optimismFoundationAttestors() external view returns (address[] memory _optimismFoundationAttestors);
+  function optimismFoundationAttesters() external view returns (address[] memory _optimismFoundationAttesters);
 
   /**
    * @notice Check if the project is already eligible

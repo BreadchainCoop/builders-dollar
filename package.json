@@ -1,14 +1,14 @@
 {
-  "name": "solidity-foundry-boilerplate",
+  "name": "builders-dollar",
   "version": "1.0.0",
   "description": "Production ready Solidity boilerplate with Foundry",
-  "homepage": "https://github.com/defi-wonderland/solidity-foundry-boilerplate#readme",
+  "homepage": "https://github.com/BreadchainCoop/builders-dollar#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/defi-wonderland/solidity-foundry-boilerplate.git"
+    "url": "git+https://github.com/BreadchainCoop/builders-dollar.git"
   },
   "license": "MIT",
-  "author": "Wonderland",
+  "author": "Breadchain Coop",
   "scripts": {
     "build": "forge build",
     "build:optimized": "FOUNDRY_PROFILE=optimized forge build",
