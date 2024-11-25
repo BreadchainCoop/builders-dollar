@@ -77,7 +77,7 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
   /// @inheritdoc IBuildersManager
   function vouch(bytes32 _projectApprovalAttestation) external vouched(_projectApprovalAttestation) {
     if (!eligibleVoter[msg.sender]) revert IdAttestationRequired();
-    _vouch(_projectApprovalAttestation);
+    _vouch(_projectApprovalAttestation, msg.sender);
   }
 
   /// @inheritdoc IBuildersManager
@@ -88,7 +88,7 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
     if (!eligibleVoter[msg.sender]) {
       if (!_validateOptimismVoter(_identityAttestation, msg.sender)) revert InvalidIdAttestation();
     }
-    _vouch(_projectApprovalAttestation);
+    _vouch(_projectApprovalAttestation, msg.sender);
   }
 
   /// @inheritdoc IBuildersManager
@@ -168,15 +168,18 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
 
   // --- Internal Utilities ---
 
-  // TODO: add that voter already vouched for a project
   /**
    * @notice Compare the attestation hash of the project's approval and validate the project
    * @param _projectApprovalAttestation The attestation hash of the project's approval
+   * @param _voter The address of the voucher
    */
-  function _vouch(bytes32 _projectApprovalAttestation) internal {
+  function _vouch(bytes32 _projectApprovalAttestation, address _voter) internal {
     if (eligibleProject[_projectApprovalAttestation] == address(0)) {
       _validateProject(_projectApprovalAttestation);
     }
+
+    if (eligibleProject[_projectApprovalAttestation] == address(0)) revert ProjectNotEligible();
+    voterToProjectVouch[_voter][_projectApprovalAttestation] = true;
   }
 
   /**

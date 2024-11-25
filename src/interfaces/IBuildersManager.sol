@@ -88,6 +88,8 @@ interface IBuildersManager {
   error NotInSeason();
   /// @notice Throws when the project is not eligible
   error NotRecipient();
+  /// @notice Throws when the project is not eligible
+  error ProjectNotEligible();
   /// @notice Throws when the project is not found
   error YieldNoProjects();
   /// @notice Throws when the project is not in the current projects list
