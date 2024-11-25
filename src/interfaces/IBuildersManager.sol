@@ -13,7 +13,6 @@ interface IBuildersManager {
   /*///////////////////////////////////////////////////////////////
                             DATA
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Builder Manager Parameters
    * @param cycleLength The yield distribution cycle length
@@ -89,7 +88,6 @@ interface IBuildersManager {
   /*///////////////////////////////////////////////////////////////
                             LOGIC
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Initialize the BuildersManager contract
    * @param _token The BuildersDollar token address
@@ -132,7 +130,6 @@ interface IBuildersManager {
   /*///////////////////////////////////////////////////////////////
                             VIEW
   //////////////////////////////////////////////////////////////*/
-
   /**
    * @notice Get the Builder's Dollar Token
    * @return _builderToken The Builder Token

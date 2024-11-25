@@ -102,7 +102,6 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
       if (projectToExpiry[_project] > block.timestamp) _ejectProject(_project);
       else if (projectToVouches[_project] < _params.minVouches) _ejectProject(_project);
     }
-
     _l = _currentProjects.length;
     if (_l == 0) revert YieldNoProjects();
 
@@ -204,6 +203,7 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
 
     uint256 _l = _currentProjects.length;
     for (uint256 _i; _i < _l; _i++) {
+      // TODO: Does this work?
       if (_currentProjects[_i] == _project) {
         _currentProjects[_i] = _currentProjects[_l - 1];
         _currentProjects.pop();
