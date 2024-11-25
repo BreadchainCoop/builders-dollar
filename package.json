@@ -34,8 +34,10 @@
     "package.json": "sort-package-json"
   },
   "dependencies": {
+    "@ethereum-attestation-service/eas-contracts": "ethereum-attestation-service/eas-contracts",
     "@openzeppelin/contracts": "^5.1.0",
-    "@openzeppelin/contracts-upgradeable": "^5.1.0"
+    "@openzeppelin/contracts-upgradeable": "^5.1.0",
+    "BuildersDollarToken": "BreadchainCoop/BuildersDollarToken"
   },
   "devDependencies": {
     "@commitlint/cli": "19.3.0",
