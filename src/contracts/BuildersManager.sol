@@ -2,18 +2,24 @@
 pragma solidity 0.8.23;
 
 import {BuildersDollar} from '@builders-dollar-token/BuildersDollar.sol';
-import {Attestation} from '@eas/Common.sol';
+import {Attestation, EMPTY_UID, Signature} from '@eas/Common.sol';
 import {IEAS} from '@eas/IEAS.sol';
+import {SchemaRecord} from '@eas/ISchemaRegistry.sol';
 import {Ownable2StepUpgradeable} from '@oz-upgradeable/access/Ownable2StepUpgradeable.sol';
+import {EIP712Upgradeable} from '@oz-upgradeable/utils/cryptography/EIP712Upgradeable.sol';
+import {SignatureChecker} from '@oz/utils/cryptography/SignatureChecker.sol';
 import {IBuildersManager} from 'interfaces/IBuildersManager.sol';
+import {OffchainAttestation} from 'interfaces/IEasExtensions.sol';
 
-contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
+contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuildersManager {
   /// @notice The mutliplier used for fixed-point division
   uint256 private constant _PRECISION = 1e18;
-  /// @notice Hash used to varify Grantee status
-  bytes32 private constant _GRANTEE_HASH = keccak256(bytes('Grantee'));
-  /// @notice Hash used to varify Application Approved status
-  bytes32 private constant _APPLICATION_APPROVED_HASH = keccak256(bytes('Application Approved'));
+  /// @notice The version of the offchain attestation
+  uint16 private constant _VERSION1 = 1;
+  /// @notice Hash of the data type used to relay calls to the attest function
+  bytes32 private constant _VERSION1_ATTEST_TYPEHASH = keccak256(
+    'Attest(uint16 version,bytes32 schema,address recipient,uint64 time,uint64 expirationTime,bool revocable,bytes32 refUID,bytes data)'
+  );
 
   // --- Registry ---
 
@@ -34,7 +40,7 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
   /// @inheritdoc IBuildersManager
   mapping(address _voter => bool _isEligibleAndVouched) public eligibleVoter;
   /// @inheritdoc IBuildersManager
-  mapping(bytes32 _attestHash => address _project) public eligibleProject;
+  mapping(bytes32 _projectAttestation => address _project) public eligibleProject;
   /// @inheritdoc IBuildersManager
   mapping(address _project => uint256 _expiry) public projectToExpiry;
   /// @inheritdoc IBuildersManager
@@ -49,10 +55,11 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
 
   /**
    * @notice Modifier to check if the user has already vouched for the project
-   * @param _projectApprovalAttestation The attestation hash of the project's approval
+   * @param _projectAttestation The attestation hash of the project
    */
-  modifier vouched(bytes32 _projectApprovalAttestation) {
-    if (voterToProjectVouch[msg.sender][_projectApprovalAttestation]) revert AlreadyVouched();
+  modifier eligible(bytes32 _projectAttestation) {
+    if (eligibleProject[_projectAttestation] == address(0)) revert InvalidProjectAttestation();
+    if (voterToProjectVouch[msg.sender][_projectAttestation]) revert AlreadyVouched();
     _;
   }
 
@@ -65,7 +72,15 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
 
   // TODO: add param enforcement modifiers
   /// @inheritdoc IBuildersManager
-  function initialize(address _token, address _eas, BuilderManagerParams memory __params) external initializer {
+  function initialize(
+    address _token,
+    address _eas,
+    string memory _name,
+    string memory _version,
+    BuilderManagerParams memory __params
+  ) external initializer {
+    __EIP712_init(_name, _version);
+
     TOKEN = BuildersDollar(_token);
     EAS = IEAS(_eas);
     _params = __params;
@@ -78,21 +93,24 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
 
   // --- External Methods ---
 
+  // TODO: does this need access control?
   /// @inheritdoc IBuildersManager
-  function vouch(bytes32 _projectApprovalAttestation) external vouched(_projectApprovalAttestation) {
-    if (!eligibleVoter[msg.sender]) revert IdAttestationRequired();
-    _vouch(_projectApprovalAttestation, msg.sender);
+  function attestProject(OffchainAttestation calldata _attestation) external {
+    if (!_validateProject(_attestation)) revert InvalidProjectAttestation();
   }
 
   /// @inheritdoc IBuildersManager
-  function vouch(
-    bytes32 _projectApprovalAttestation,
-    bytes32 _identityAttestation
-  ) external vouched(_projectApprovalAttestation) {
+  function vouch(bytes32 _projectAttestation) external eligible(_projectAttestation) {
+    if (!eligibleVoter[msg.sender]) revert IdAttestationRequired();
+    voterToProjectVouch[msg.sender][_projectAttestation] = true;
+  }
+
+  /// @inheritdoc IBuildersManager
+  function vouch(bytes32 _projectAttestation, bytes32 _identityAttestation) external eligible(_projectAttestation) {
     if (!eligibleVoter[msg.sender]) {
       if (!_validateOptimismVoter(_identityAttestation, msg.sender)) revert InvalidIdAttestation();
     }
-    _vouch(_projectApprovalAttestation, msg.sender);
+    voterToProjectVouch[msg.sender][_projectAttestation] = true;
   }
 
   /// @inheritdoc IBuildersManager
@@ -118,11 +136,6 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
       TOKEN.transfer(_currentProjects[_i], _yieldPerProject);
     }
     emit YieldDistributed(_yieldPerProject, _currentProjects);
-  }
-
-  /// @inheritdoc IBuildersManager
-  function ejectProject(address _project) external onlyOwner {
-    _ejectProject(_project);
   }
 
   /// @inheritdoc IBuildersManager
@@ -163,78 +176,88 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
     _opAttesters = _params.optimismFoundationAttesters;
   }
 
-  // --- Public Methods ---
-
-  /// @inheritdoc IBuildersManager
-  function isValidProject(bytes32 _approvalAttestation) public view returns (bool _valid) {
-    if (eligibleProject[_approvalAttestation] != address(0)) _valid = true;
-  }
-
   // --- Internal Utilities ---
-
-  /**
-   * @notice Compare the attestation hash of the project's approval and validate the project
-   * @param _projectApprovalAttestation The attestation hash of the project's approval
-   * @param _voter The address of the voucher
-   */
-  function _vouch(bytes32 _projectApprovalAttestation, address _voter) internal {
-    if (eligibleProject[_projectApprovalAttestation] == address(0)) {
-      _validateProject(_projectApprovalAttestation);
-    }
-
-    if (eligibleProject[_projectApprovalAttestation] == address(0)) revert ProjectNotEligible();
-    voterToProjectVouch[_voter][_projectApprovalAttestation] = true;
-  }
 
   /**
    * @notice Function to validate the voucher's identity
    * @param _identityAttestation The attestation hash of the voucher's identity
    * @param _claimer The address of the voucher
-   * @return _valid True if the voter is elegible
+   * @return _verified True if the voter is elegible
    */
-  function _validateOptimismVoter(bytes32 _identityAttestation, address _claimer) internal returns (bool _valid) {
+  function _validateOptimismVoter(bytes32 _identityAttestation, address _claimer) internal returns (bool _verified) {
     Attestation memory _attestation = EAS.getAttestation(_identityAttestation);
-    if (_attestation.uid == bytes32(0)) revert AttestationNotFound();
-    if (!optimismFoundationAttester[_attestation.attester]) revert InvalidOpAttester();
-    if (_attestation.recipient != _claimer) revert NotRecipient();
 
-    (uint256 farcasterID,,,,) = abi.decode(_attestation.data, (uint256, string, string, string, string));
+    if (_attestation.uid == bytes32(0)) {
+      _verified = false;
+    } else if (!optimismFoundationAttester[_attestation.attester]) {
+      _verified = false;
+    } else if (_attestation.recipient != _claimer) {
+      _verified = false;
+    } else {
+      (uint256 farcasterID,,,,) = abi.decode(_attestation.data, (uint256, string, string, string, string));
 
-    eligibleVoter[_claimer] = true;
-    emit VoterValidated(_claimer, farcasterID);
-    _valid = true;
+      _verified = true;
+      eligibleVoter[_claimer] = _verified;
+      emit VoterValidated(_claimer, farcasterID);
+    }
   }
 
   /**
-   * @notice Function to validate the project's attestation
-   * @param _approvalAttestation The attestation hash of the project's approval
-   * @return _valid True if the project is valid
+   * @notice Function to verify the project's attestation
+   * @param _attestation The project's Attestation
+   * @return _verified True if the project is verified
    */
-  function _validateProject(bytes32 _approvalAttestation) internal returns (bool _valid) {
-    if (isValidProject(_approvalAttestation)) revert AlreadyValid();
+  function _validateProject(OffchainAttestation calldata _attestation) internal returns (bool _verified) {
+    SchemaRecord memory schemaRecord = EAS.getSchemaRegistry().getSchema(_attestation.schema);
 
-    Attestation memory _attestation = EAS.getAttestation(_approvalAttestation);
-    if (_attestation.uid == bytes32(0)) revert AttestationNotFound();
-    if (!optimismFoundationAttester[_attestation.attester]) revert InvalidOpAttester();
-    if (_attestation.time < _params.currentSeasonExpiry - _params.seasonDuration) revert NotInSeason();
+    if (schemaRecord.uid == EMPTY_UID) {
+      _verified = false;
+    } else if (!optimismFoundationAttester[_attestation.attester]) {
+      _verified = false;
+    } else if (_attestation.version != _VERSION1) {
+      _verified = false;
+    } else if (_attestation.time < _params.currentSeasonExpiry - _params.seasonDuration) {
+      _verified = false;
+    } else if (_attestation.expirationTime < block.timestamp) {
+      _verified = false;
+    } else if (_attestation.refUID != EMPTY_UID) {
+      _verified = false;
+    } else if (!EAS.isAttestationValid(_attestation.refUID)) {
+      _verified = false;
+    } else {
+      bytes32 _projectHash = _hashTypedDataV4(
+        keccak256(
+          abi.encode(
+            _VERSION1_ATTEST_TYPEHASH,
+            _VERSION1,
+            _attestation.schema,
+            _attestation.recipient,
+            _attestation.time,
+            _attestation.expirationTime,
+            _attestation.revocable,
+            _attestation.refUID,
+            keccak256(_attestation.data)
+          )
+        )
+      );
+      Signature memory _sig = _attestation.signature;
 
-    (string memory _param1,,,, string memory _param5) =
-      abi.decode(_attestation.data, (string, string, string, string, string));
+      _verified = SignatureChecker.isValidSignatureNow(
+        _attestation.attester, _projectHash, abi.encodePacked(_sig.r, _sig.s, _sig.v)
+      );
+      if (_verified) {
+        address _project = _attestation.recipient;
+        _currentProjects.push(_project);
+        eligibleProject[_projectHash] = _project;
+        projectToExpiry[_project] = _params.currentSeasonExpiry;
 
-    if (keccak256(bytes(_param1)) != _GRANTEE_HASH) revert InvalidParamBytes(bytes(_param1));
-    if (keccak256(bytes(_param5)) != _APPLICATION_APPROVED_HASH) revert InvalidParamBytes(bytes(_param5));
-
-    address _project = _attestation.recipient;
-    _currentProjects.push(_project);
-    eligibleProject[_approvalAttestation] = _project;
-    projectToExpiry[_project] = _params.currentSeasonExpiry;
-
-    emit ProjectValidated(_approvalAttestation, _project);
-    _valid = true;
+        emit ProjectValidated(_projectHash, _project);
+      }
+    }
   }
 
   /**
-   * @notice See ejectProject @IBuildersManager
+   * @notice Remove project from the current projects list and zero out the vouches
    * @param _project The project to eject
    */
   function _ejectProject(address _project) internal {
