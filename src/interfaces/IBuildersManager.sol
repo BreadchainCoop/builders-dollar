@@ -140,31 +140,35 @@ interface IBuildersManager {
   /**
    * @notice Update the status of multiple OP Foundation attesters
    * @param _attestersToUpdate The list of OP Foundation attesters to modify
-   * @param _actions The list of actions to take for the attesters (true = add, false = remove)
+   * @param _statuses The list of statuses to set for the attesters (true = add, false = remove)
    */
-  function batchUpdateOpFoundationAttesters(address[] memory _attestersToUpdate, bool[] memory _actions) external;
+  function batchUpdateOpFoundationAttesters(address[] memory _attestersToUpdate, bool[] memory _statuses) external;
 
   /**
    * @notice Update the status of a OP Foundation attester
    * @param _attester The OP Foundation attester to modify
-   * @param _valid The action to take for the attester (true = add, false = remove)
+   * @param _status The status to set for the attester (true = add, false = remove)
    */
-  function updateOpFoundationAttester(address _attester, bool _valid) external;
+  function updateOpFoundationAttester(address _attester, bool _status) external;
 
   /*///////////////////////////////////////////////////////////////
                             VIEW
     //////////////////////////////////////////////////////////////*/
   /**
    * @notice Get the Builder's Dollar Token
+   * @dev This is functionally-immutable and set during intialization
    * @return _builderToken The Builder Token
    */
-  function token() external view returns (BuildersDollar _builderToken);
+  // solhint-disable-next-line func-name-mixedcase
+  function TOKEN() external view returns (BuildersDollar _builderToken);
 
   /**
    * @notice Get the Ethereum-Attestation-Service (EAS) contract
+   * @dev This is functionally-immutable and set during intialization
    * @return _eas The EAS contract
    */
-  function eas() external view returns (IEAS _eas);
+  // solhint-disable-next-line func-name-mixedcase
+  function EAS() external view returns (IEAS _eas);
 
   /**
    * @notice Check if the attester is an Optimism Foundation Attester

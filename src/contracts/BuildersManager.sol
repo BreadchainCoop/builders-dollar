@@ -18,9 +18,11 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
   // --- Registry ---
 
   /// @inheritdoc IBuildersManager
-  BuildersDollar public token;
+  // solhint-disable-next-line
+  BuildersDollar public TOKEN;
   /// @inheritdoc IBuildersManager
-  IEAS public eas;
+  // solhint-disable-next-line
+  IEAS public EAS;
 
   // --- Data ---
 
@@ -64,8 +66,8 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
   // TODO: add param enforcement modifiers
   /// @inheritdoc IBuildersManager
   function initialize(address _token, address _eas, BuilderManagerParams memory __params) external initializer {
-    token = BuildersDollar(_token);
-    eas = IEAS(_eas);
+    TOKEN = BuildersDollar(_token);
+    EAS = IEAS(_eas);
     _params = __params;
 
     uint256 _l = _params.optimismFoundationAttesters.length;
@@ -108,12 +110,12 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
     _l = _currentProjects.length;
     if (_l == 0) revert YieldNoProjects();
 
-    uint256 _yield = token.yieldAccrued();
-    token.claimYield(_yield);
+    uint256 _yield = TOKEN.yieldAccrued();
+    TOKEN.claimYield(_yield);
     uint256 _yieldPerProject = ((_yield * _PRECISION) / _l) / _PRECISION;
 
     for (uint256 _i; _i < _l; ++_i) {
-      token.transfer(_currentProjects[_i], _yieldPerProject);
+      TOKEN.transfer(_currentProjects[_i], _yieldPerProject);
     }
     emit YieldDistributed(_yieldPerProject, _currentProjects);
   }
@@ -129,20 +131,20 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
   }
 
   /// @inheritdoc IBuildersManager
-  function updateOpFoundationAttester(address _attester, bool _valid) external onlyOwner {
-    _modifyOpFoundationAttester(_attester, _valid);
+  function updateOpFoundationAttester(address _attester, bool _status) external onlyOwner {
+    _modifyOpFoundationAttester(_attester, _status);
   }
 
   /// @inheritdoc IBuildersManager
   function batchUpdateOpFoundationAttesters(
     address[] memory _attestersToUpdate,
-    bool[] memory _actions
+    bool[] memory _statuses
   ) external onlyOwner {
     uint256 _l = _attestersToUpdate.length;
-    if (_l != _actions.length) revert InvalidLength();
+    if (_l != _statuses.length) revert InvalidLength();
 
     for (uint256 _i; _i < _l; _i++) {
-      _modifyOpFoundationAttester(_attestersToUpdate[_i], _actions[_i]);
+      _modifyOpFoundationAttester(_attestersToUpdate[_i], _statuses[_i]);
     }
   }
 
@@ -191,7 +193,7 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
    * @return _valid True if the voter is elegible
    */
   function _validateOptimismVoter(bytes32 _identityAttestation, address _claimer) internal returns (bool _valid) {
-    Attestation memory _attestation = eas.getAttestation(_identityAttestation);
+    Attestation memory _attestation = EAS.getAttestation(_identityAttestation);
     if (_attestation.uid == bytes32(0)) revert AttestationNotFound();
     if (!optimismFoundationAttester[_attestation.attester]) revert InvalidOpAttester();
     if (_attestation.recipient != _claimer) revert NotRecipient();
@@ -211,7 +213,7 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
   function _validateProject(bytes32 _approvalAttestation) internal returns (bool _valid) {
     if (isValidProject(_approvalAttestation)) revert AlreadyValid();
 
-    Attestation memory _attestation = eas.getAttestation(_approvalAttestation);
+    Attestation memory _attestation = EAS.getAttestation(_approvalAttestation);
     if (_attestation.uid == bytes32(0)) revert AttestationNotFound();
     if (!optimismFoundationAttester[_attestation.attester]) revert InvalidOpAttester();
     if (_attestation.time < _params.currentSeasonExpiry - _params.seasonDuration) revert NotInSeason();
@@ -265,15 +267,15 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
   /**
    * @notice See updateOpFoundationAttester @IBuildersManager
    * @param _attester The attester address
-   * @param _valid The attester status
+   * @param _status The attester status
    */
-  function _modifyOpFoundationAttester(address _attester, bool _valid) internal {
+  function _modifyOpFoundationAttester(address _attester, bool _status) internal {
     bool _currentStatus = optimismFoundationAttester[_attester];
-    if (_currentStatus == _valid) revert AlreadyUpdated(_attester);
+    if (_currentStatus == _status) revert AlreadyUpdated(_attester);
 
-    optimismFoundationAttester[_attester] = _valid;
+    optimismFoundationAttester[_attester] = _status;
 
-    if (_valid) {
+    if (_status) {
       _params.optimismFoundationAttesters.push(_attester);
     } else {
       uint256 _l = _params.optimismFoundationAttesters.length;
