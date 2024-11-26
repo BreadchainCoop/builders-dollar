@@ -8,6 +8,8 @@ import {Ownable2StepUpgradeable} from '@oz-upgradeable/access/Ownable2StepUpgrad
 import {IBuildersManager} from 'interfaces/IBuildersManager.sol';
 
 contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
+  /// @notice The mutliplier used for fixed-point division
+  uint256 private constant _PRECISION = 1e18;
   /// @notice Hash used to varify Grantee status
   bytes32 private constant _GRANTEE_HASH = keccak256(bytes('Grantee'));
   /// @notice Hash used to varify Application Approved status
@@ -108,7 +110,7 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
 
     uint256 _yield = token.yieldAccrued();
     token.claimYield(_yield);
-    uint256 _yieldPerProject = ((_yield * _params.precision) / _l) / _params.precision;
+    uint256 _yieldPerProject = ((_yield * _PRECISION) / _l) / _PRECISION;
 
     for (uint256 _i; _i < _l; ++_i) {
       token.transfer(_currentProjects[_i], _yieldPerProject);
@@ -257,7 +259,6 @@ contract BuildersManager is Ownable2StepUpgradeable, IBuildersManager {
     else if (_param == 'currentSeasonExpiry') _params.currentSeasonExpiry = uint64(_value);
     else if (_param == 'seasonDuration') _params.seasonDuration = _value;
     else if (_param == 'minVouches') _params.minVouches = _value;
-    else if (_param == 'precision') _params.precision = _value;
     else revert InvalidParamBytes32(_param);
   }
 

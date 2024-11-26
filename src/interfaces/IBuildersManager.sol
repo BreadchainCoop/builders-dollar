@@ -20,7 +20,6 @@ interface IBuildersManager {
    * @param currentSeasonExpiry The timestamp for the current season expiry
    * @param seasonDuration The duration of a season
    * @param minVouches The minimum number of vouches required for a project to receive yield
-   * @param precision The division precision for yield distribution calculations
    * @param optimismFoundationAttesters The list of attesting addresses for the OP Foundation
    */
   struct BuilderManagerParams {
@@ -29,7 +28,6 @@ interface IBuildersManager {
     uint64 currentSeasonExpiry;
     uint256 seasonDuration;
     uint256 minVouches;
-    uint256 precision;
     address[] optimismFoundationAttesters;
   }
 
