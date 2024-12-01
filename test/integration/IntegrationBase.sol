@@ -14,11 +14,11 @@ contract IntegrationBase is Common, Test {
 
   function setUp() public virtual override {
     super.setUp();
+    deployer = owner;
     vm.createSelectFork(vm.rpcUrl('gnosis'));
+
     vm.startPrank(owner);
-
     _deployContracts();
-
     vm.stopPrank();
   }
 }
