@@ -67,6 +67,8 @@ interface IBuildersManager {
   error AlreadyVerified();
   /// @notice Throws when the voter has already vouched for a project
   error AlreadyVouched();
+  /// @notice Throws when the project is not in the current projects list
+  error CycleNotReady();
   /// @notice Throws when the identification-attestation is required
   error IdAttestationRequired();
   /// @notice Throws when the identification-attestation is invalid
@@ -78,10 +80,10 @@ interface IBuildersManager {
   /// @notice Throws when the bytes32 parameter is incorrect
   /// @param _param The invalid parameter
   error InvalidParamBytes32(bytes32 _param);
+  /// @notice Throws when the settings are not set at initialization
+  error SettingsNotSet();
   /// @notice Throws when the project is not found
   error YieldNoProjects();
-  /// @notice Throws when the project is not in the current projects list
-  error CycleNotReady();
 
   /*///////////////////////////////////////////////////////////////
                             LOGIC

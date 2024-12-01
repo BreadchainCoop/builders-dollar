@@ -72,7 +72,6 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     _disableInitializers();
   }
 
-  // TODO: add param enforcement modifiers
   /// @inheritdoc IBuildersManager
   function initialize(
     address _token,
@@ -81,6 +80,12 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     string memory _version,
     BuilderManagerSettings memory __settings
   ) external initializer {
+    if (bytes(_name).length == 0 || bytes(_version).length == 0) revert SettingsNotSet();
+    if (_token == address(0) || _eas == address(0)) revert SettingsNotSet();
+    if (_settings.optimismFoundationAttesters.length == 0) revert SettingsNotSet();
+    if (_settings.cycleLength * _settings.currentSeasonExpiry * _settings.seasonDuration * _settings.minVouches == 0) {
+      revert SettingsNotSet();
+    }
     __EIP712_init(_name, _version);
 
     TOKEN = BuildersDollar(_token);
