@@ -7,9 +7,6 @@ import {Script} from 'forge-std/Script.sol';
 // solhint-disable-next-line
 import 'script/Registry.sol';
 
-address constant EAS = address(0x420);
-address constant BUILDERS_DOLLAR = address(0x421);
-
 struct DeploymentParams {
   address token; // BuildersDollar token address
   address eas; // Ethereum Attestation Service address
@@ -36,8 +33,8 @@ contract Common is Script {
   function setUp() public virtual {
     // Optimism
     _deploymentParams[10] = DeploymentParams({
-      token: BUILDERS_DOLLAR, // Replace with actual BuildersDollar address
-      eas: EAS, // Replace with actual EAS address
+      token: OP_BUILDERS_DOLLAR, // Replace with actual BuildersDollar address
+      eas: OP_EAS, // Replace with actual EAS address
       name: 'BuildersManager',
       version: '1',
       settings: IBuildersManager.BuilderManagerSettings({
@@ -49,16 +46,30 @@ contract Common is Script {
         optimismFoundationAttesters: new address[](0) // Replace with actual attesters
       })
     });
+
+    // Anvil
+    address[] memory _attesters = new address[](2);
+    _attesters[0] = ANVIL_FOUNDATION_ATTESTER_1;
+    _attesters[1] = ANVIL_FOUNDATION_ATTESTER_2;
+
+    _deploymentParams[31_337] = DeploymentParams({
+      token: ANVIL_BUILDERS_DOLLAR,
+      eas: ANVIL_EAS,
+      name: 'BuildersManager',
+      version: '1',
+      settings: IBuildersManager.BuilderManagerSettings({
+        cycleLength: 7 days,
+        lastClaimedTimestamp: uint64(block.timestamp),
+        currentSeasonExpiry: uint64(block.timestamp + 180 days),
+        seasonDuration: 365 days,
+        minVouches: 3,
+        optimismFoundationAttesters: _attesters
+      })
+    });
   }
 
   function _deployContracts() internal {
-    DeploymentParams memory _settings = _deploymentParams[block.chainid];
-
-    address token = _settings.token;
-    address eas = _settings.eas;
-    string memory name = _settings.name;
-    string memory version = _settings.version;
-    IBuildersManager.BuilderManagerSettings memory settings = _settings.settings;
+    DeploymentParams memory _s = _deploymentParams[block.chainid];
 
     address _implementation = address(new BuildersManager());
     builderManager = BuildersManager(
@@ -66,7 +77,9 @@ contract Common is Script {
         new TransparentUpgradeableProxy(
           _implementation,
           deployer,
-          abi.encodeWithSelector(IBuildersManager.initialize.selector, token, eas, name, version, settings)
+          abi.encodeWithSelector(
+            IBuildersManager.initialize.selector, _s.token, _s.eas, _s.name, _s.version, _s.settings
+          )
         )
       )
     );

@@ -11,7 +11,10 @@ import {SignatureChecker} from '@oz/utils/cryptography/SignatureChecker.sol';
 import {IBuildersManager} from 'interfaces/IBuildersManager.sol';
 import {OffchainAttestation} from 'interfaces/IEasExtensions.sol';
 
-contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuildersManager {
+import {Test} from 'forge-std/Test.sol';
+
+// TODO: Remove Test
+contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuildersManager, Test {
   /// @notice The mutliplier used for fixed-point division
   uint256 private constant _PRECISION = 1e18;
   /// @notice The version of the offchain attestation
@@ -80,21 +83,20 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     string memory _version,
     BuilderManagerSettings memory __settings
   ) external initializer {
-    if (bytes(_name).length == 0 || bytes(_version).length == 0) revert SettingsNotSet();
+    BuilderManagerSettings memory _s = __settings;
     if (_token == address(0) || _eas == address(0)) revert SettingsNotSet();
-    if (_settings.optimismFoundationAttesters.length == 0) revert SettingsNotSet();
-    if (_settings.cycleLength * _settings.currentSeasonExpiry * _settings.seasonDuration * _settings.minVouches == 0) {
-      revert SettingsNotSet();
-    }
-    __EIP712_init(_name, _version);
+    if (bytes(_name).length == 0 || bytes(_version).length == 0) revert SettingsNotSet();
+    if (!(_s.optimismFoundationAttesters.length > 0)) revert SettingsNotSet();
+    if (_s.cycleLength * _s.currentSeasonExpiry * _s.seasonDuration * _s.minVouches == 0) revert SettingsNotSet();
 
+    __EIP712_init(_name, _version);
     TOKEN = BuildersDollar(_token);
     EAS = IEAS(_eas);
-    _settings = __settings;
+    _settings = _s;
 
-    uint256 _l = _settings.optimismFoundationAttesters.length;
+    uint256 _l = _s.optimismFoundationAttesters.length;
     for (uint256 _i; _i < _l; ++_i) {
-      optimismFoundationAttester[_settings.optimismFoundationAttesters[_i]] = true;
+      optimismFoundationAttester[_s.optimismFoundationAttesters[_i]] = true;
     }
   }
 
