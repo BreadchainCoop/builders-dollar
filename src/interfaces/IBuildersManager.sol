@@ -15,7 +15,7 @@ interface IBuildersManager {
                             DATA
     //////////////////////////////////////////////////////////////*/
   /**
-   * @notice Builder Manager Parameters
+   * @notice Builder Manager settings
    * @param cycleLength The yield distribution cycle length
    * @param lastClaimedTimestamp The timestamp for the last time yield was claimed
    * @param currentSeasonExpiry The timestamp for the current season expiry
@@ -23,7 +23,7 @@ interface IBuildersManager {
    * @param minVouches The minimum number of vouches required for a project to receive yield
    * @param optimismFoundationAttesters The list of attesting addresses for the OP Foundation
    */
-  struct BuilderManagerParams {
+  struct BuilderManagerSettings {
     uint64 cycleLength;
     uint64 lastClaimedTimestamp;
     uint64 currentSeasonExpiry;
@@ -45,9 +45,9 @@ interface IBuildersManager {
   /**
    * @notice Emitted when a voter is validated
    * @param _claimer The caller claiming the voter validation
-   * @param _farcasterID The Farcaster ID to prevent sybil attacks
+   * @param _identityAttestation The identity attestation hash
    */
-  event VoterValidated(address indexed _claimer, uint256 indexed _farcasterID);
+  event VoterValidated(address indexed _claimer, bytes32 indexed _identityAttestation);
 
   /**
    * @notice The event emitted when yield is distributed
@@ -63,7 +63,9 @@ interface IBuildersManager {
   /// @notice Throws when the parameter is already set
   /// @param _attester The attester address
   error AlreadyUpdated(address _attester);
-  /// @notice Throws when the voter is already vouched
+  /// @notice Throws when the project or voter is already verified
+  error AlreadyVerified();
+  /// @notice Throws when the voter has already vouched for a project
   error AlreadyVouched();
   /// @notice Throws when the identification-attestation is required
   error IdAttestationRequired();
@@ -79,7 +81,7 @@ interface IBuildersManager {
   /// @notice Throws when the project is not found
   error YieldNoProjects();
   /// @notice Throws when the project is not in the current projects list
-  error YieldNotReady();
+  error CycleNotReady();
 
   /*///////////////////////////////////////////////////////////////
                             LOGIC
@@ -97,14 +99,21 @@ interface IBuildersManager {
     address _eas,
     string memory _name,
     string memory _version,
-    BuilderManagerParams memory _params
+    BuilderManagerSettings memory _params
   ) external;
 
   /**
-   * @notice Verify a project with an off-chain attestation
-   * @param _attestation The off-chain attestation
+   * @notice Verify a project with an off-chain attestation and vouch for a project
+   * @param _offchainProjectAttestation The attestation of the project
    */
-  function attestProject(OffchainAttestation calldata _attestation) external;
+  function vouch(OffchainAttestation calldata _offchainProjectAttestation) external;
+
+  /**
+   * @notice Verify a project with an off-chain attestation and vouch for a project
+   * @param _offchainProjectAttestation The attestation of the project
+   * @param _identityAttestation The attestation of the voucher's identity
+   */
+  function vouch(OffchainAttestation calldata _offchainProjectAttestation, bytes32 _identityAttestation) external;
 
   /**
    * @notice Vouch for a project
@@ -226,10 +235,10 @@ interface IBuildersManager {
   function voterToProjectVouch(address _voter, bytes32 _attestHash) external view returns (bool _vouched);
 
   /**
-   * @notice Get the current BuilderManager parameters
-   * @return __params The BuilderManager parameters
+   * @notice Get the current BuilderManager settings
+   * @return __settings The BuilderManager settings
    */
-  function params() external view returns (BuilderManagerParams memory __params);
+  function settings() external view returns (BuilderManagerSettings memory __settings);
 
   /**
    * @notice Get the current projects
