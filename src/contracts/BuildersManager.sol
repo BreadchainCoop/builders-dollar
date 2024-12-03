@@ -105,14 +105,14 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
   /// @inheritdoc IBuildersManager
   function vouch(OffchainAttestation calldata _offchainProjectAttestation) external {
     if (!_validateProject(_offchainProjectAttestation)) revert InvalidProjectAttestation();
-    _vouch(_hashProject(_offchainProjectAttestation), msg.sender);
+    _vouch(hashProject(_offchainProjectAttestation), msg.sender);
   }
 
   /// @inheritdoc IBuildersManager
   function vouch(OffchainAttestation calldata _offchainProjectAttestation, bytes32 _identityAttestation) external {
     if (!_validateOptimismVoter(_identityAttestation, msg.sender)) revert InvalidIdAttestation();
     if (!_validateProject(_offchainProjectAttestation)) revert InvalidProjectAttestation();
-    _vouch(_hashProject(_offchainProjectAttestation), msg.sender);
+    _vouch(hashProject(_offchainProjectAttestation), msg.sender);
   }
 
   /// @inheritdoc IBuildersManager
@@ -188,6 +188,27 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     _opAttesters = _settings.optimismFoundationAttesters;
   }
 
+  // --- Public Methods ---
+
+  /// @inheritdoc IBuildersManager
+  function hashProject(OffchainAttestation calldata _attestation) public view returns (bytes32 _projectHash) {
+    _projectHash = _hashTypedDataV4(
+      keccak256(
+        abi.encode(
+          _VERSION1_ATTEST_TYPEHASH,
+          _VERSION1,
+          _attestation.schema,
+          _attestation.recipient,
+          _attestation.time,
+          _attestation.expirationTime,
+          _attestation.revocable,
+          _attestation.refUID,
+          keccak256(_attestation.data)
+        )
+      )
+    );
+  }
+
   // --- Internal Utilities ---
 
   /**
@@ -231,7 +252,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
    * @return _verified True if the project is verified
    */
   function _validateProject(OffchainAttestation calldata _attestation) internal returns (bool _verified) {
-    bytes32 _projectHash = _hashProject(_attestation);
+    bytes32 _projectHash = hashProject(_attestation);
     if (eligibleProject[_projectHash] != address(0)) revert AlreadyVerified();
 
     SchemaRecord memory schemaRecord = EAS.getSchemaRegistry().getSchema(_attestation.schema);
@@ -244,7 +265,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
       _verified = false;
     } else if (_attestation.time < _settings.currentSeasonExpiry - _settings.seasonDuration) {
       _verified = false;
-    } else if (_attestation.expirationTime < block.timestamp) {
+    } else if (_attestation.expirationTime != 0 && _attestation.expirationTime < block.timestamp) {
       _verified = false;
     } else if (_attestation.refUID != EMPTY_UID) {
       _verified = false;
@@ -252,6 +273,12 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
       _verified = false;
     } else {
       Signature memory _sig = _attestation.signature;
+
+      assertTrue(
+        SignatureChecker.isValidSignatureNow(
+          _attestation.attester, _projectHash, abi.encodePacked(_sig.r, _sig.s, _sig.v)
+        )
+      );
 
       _verified = SignatureChecker.isValidSignatureNow(
         _attestation.attester, _projectHash, abi.encodePacked(_sig.r, _sig.s, _sig.v)
@@ -319,28 +346,5 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
         }
       }
     }
-  }
-
-  /**
-   * @notice Internal function to get the project hash from the offchain attestation
-   * @param _attestation The offchain attestation
-   * @return _projectHash The project hash
-   */
-  function _hashProject(OffchainAttestation calldata _attestation) internal view returns (bytes32 _projectHash) {
-    _projectHash = _hashTypedDataV4(
-      keccak256(
-        abi.encode(
-          _VERSION1_ATTEST_TYPEHASH,
-          _VERSION1,
-          _attestation.schema,
-          _attestation.recipient,
-          _attestation.time,
-          _attestation.expirationTime,
-          _attestation.revocable,
-          _attestation.refUID,
-          keccak256(_attestation.data)
-        )
-      )
-    );
   }
 }

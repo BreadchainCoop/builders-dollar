@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.23;
 
+import {Attestation, Signature} from '@eas/Common.sol';
+import {IEAS} from '@eas/IEAS.sol';
+import {ISchemaRegistry, SchemaRecord} from '@eas/ISchemaRegistry.sol';
+import {ISchemaResolver} from '@eas/resolver/ISchemaResolver.sol';
+import 'forge-std/StdJson.sol';
 import {Test} from 'forge-std/Test.sol';
+import {OffchainAttestation} from 'interfaces/IEasExtensions.sol';
 import {Common} from 'script/Common.sol';
 // solhint-disable-next-line
 import 'script/Registry.sol';
@@ -9,15 +15,138 @@ import 'script/Registry.sol';
 contract UnitBuildersManager is Test, Common {
   uint256 public constant INIT_BALANCE = 1 ether;
 
-  address public user = makeAddr('user');
+  string public configPath = string(bytes('./test/unit/example_project_attestation.json'));
+
   address public owner = makeAddr('owner');
 
+  OffchainAttestation public offchainAttestation;
+  Attestation public identityAttestation;
+
+  bytes32 public offchainAttestationHash;
+
+  bytes32 public r;
+  bytes32 public s;
+  uint8 public v;
+
+  bytes32 public schemaHash;
+
   function setUp() public virtual override {
+    vm.warp(1_725_480_303);
     super.setUp();
     deployer = owner;
 
     vm.startPrank(owner);
     _deployContracts();
     vm.stopPrank();
+
+    (offchainAttestation, offchainAttestationHash) = _createOffchainAttestationsFromJson();
+    identityAttestation = _createIdentityAttestations();
+
+    (r, s, v) = _rsvFromJson();
+    schemaHash = _getSchemaHash();
+  }
+
+  // --- Helper Functions --- //
+
+  function _rsvFromJson() internal view returns (bytes32 _r, bytes32 _s, uint8 _v) {
+    string memory _configData = vm.readFile(configPath);
+
+    _r = bytes32(stdJson.readBytes32(_configData, '.sig.signature.r'));
+    _s = bytes32(stdJson.readBytes32(_configData, '.sig.signature.s'));
+    _v = uint8(stdJson.readUint(_configData, '.sig.signature.v'));
+  }
+
+  function _getSchemaHash() internal view returns (bytes32 _hash) {
+    string memory _configData = vm.readFile(configPath);
+    _hash = bytes32(stdJson.readBytes32(_configData, '.sig.message.schema'));
+  }
+
+  function _createOffchainAttestationsFromJson()
+    internal
+    view
+    returns (OffchainAttestation memory _attestation, bytes32 _hash)
+  {
+    string memory _configData = vm.readFile(configPath);
+
+    _attestation = OffchainAttestation({
+      version: uint16(stdJson.readUint(_configData, '.sig.message.version')),
+      attester: ANVIL_FOUNDATION_ATTESTER_3,
+      schema: bytes32(stdJson.readBytes32(_configData, '.sig.message.schema')),
+      recipient: stdJson.readAddress(_configData, '.sig.message.recipient'),
+      time: uint64(stdJson.readUint(_configData, '.sig.message.time')),
+      expirationTime: uint64(stdJson.readUint(_configData, '.sig.message.expirationTime')),
+      revocable: stdJson.readBool(_configData, '.sig.message.revocable'),
+      refUID: bytes32(stdJson.readBytes32(_configData, '.sig.message.refUID')),
+      data: stdJson.readBytes(_configData, '.sig.message.data'),
+      signature: Signature({
+        v: uint8(stdJson.readUint(_configData, '.sig.signature.v')),
+        r: bytes32(stdJson.readBytes32(_configData, '.sig.signature.r')),
+        s: bytes32(stdJson.readBytes32(_configData, '.sig.signature.s'))
+      })
+    });
+
+    _hash = buildersManager.hashProject(_attestation);
+  }
+
+  function _createIdentityAttestations() internal pure returns (Attestation memory _attestation) {
+    // TODO: data should be: 0x000000000000000000000000000000000000000000000000000000000003b96700000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000012000000000000000000000000000000000000000000000000000000000000001600000000000000000000000000000000000000000000000000000000000000001350000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000054775657374000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000141000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003322e310000000000000000000000000000000000000000000000000000000000
+    bytes memory _data;
+
+    _attestation = Attestation({
+      uid: bytes32(0x2fbd12ff8d3a1724f5b915e632ef7f08ad827d2eb775faa79a2962c5c0ebf05d),
+      schema: bytes32(0x41513aa7b99bfea09d389c74aacedaeb13c28fb748569e9e2400109cbe284ee5),
+      time: uint64(1_725_480_303),
+      expirationTime: uint64(0),
+      revocationTime: uint64(0),
+      refUID: bytes32(0x0),
+      recipient: 0x5C30F1273158318D3DC8FFCf991421f69fD3B77d,
+      attester: ANVIL_FOUNDATION_ATTESTER_2,
+      revocable: true,
+      data: _data
+    });
+  }
+}
+
+contract UnitBuildersManagerTest is UnitBuildersManager {
+  function testOffchainAttestationCreation() public view {
+    assertEq(offchainAttestation.version, 1);
+    assertEq(offchainAttestation.attester, ANVIL_FOUNDATION_ATTESTER_3);
+  }
+
+  /**
+   * identity attestation is valid
+   * project attestation is valid
+   * project attestation is signed by the attester
+   */
+  function testVouchAttestationAndIdentity() public {
+    SchemaRecord memory _schemaRecord =
+      SchemaRecord({uid: schemaHash, resolver: ISchemaResolver(address(0x429)), revocable: false, schema: 'data'});
+
+    // Identity Attestation
+    vm.mockCall(
+      ANVIL_EAS,
+      abi.encodeWithSelector(IEAS.getAttestation.selector, identityAttestation.uid),
+      abi.encode(identityAttestation)
+    );
+
+    // Project Attestation
+    vm.mockCall(
+      ANVIL_EAS,
+      abi.encodeWithSelector(IEAS.getSchemaRegistry.selector),
+      abi.encode(ISchemaRegistry(ANVIL_EAS_SCHEMA_REGISTRY))
+    );
+
+    vm.mockCall(
+      ANVIL_EAS_SCHEMA_REGISTRY,
+      abi.encodeWithSelector(ISchemaRegistry.getSchema.selector, schemaHash),
+      abi.encode(_schemaRecord)
+    );
+
+    vm.mockCall(
+      ANVIL_EAS, abi.encodeWithSelector(IEAS.isAttestationValid.selector, offchainAttestation.refUID), abi.encode(true)
+    );
+
+    vm.prank(ANVIL_VOTER_1);
+    buildersManager.vouch(offchainAttestation, identityAttestation.uid);
   }
 }

@@ -22,7 +22,7 @@ struct DeploymentParams {
  * @dev This contract is intended for use in Scripts and Integration Tests
  */
 contract Common is Script {
-  IBuildersManager public builderManager;
+  IBuildersManager public buildersManager;
 
   // @notice Deployer address will be the owner of the proxy
   address public deployer;
@@ -48,9 +48,10 @@ contract Common is Script {
     });
 
     // Anvil
-    address[] memory _attesters = new address[](2);
+    address[] memory _attesters = new address[](3);
     _attesters[0] = ANVIL_FOUNDATION_ATTESTER_1;
     _attesters[1] = ANVIL_FOUNDATION_ATTESTER_2;
+    _attesters[2] = ANVIL_FOUNDATION_ATTESTER_3;
 
     _deploymentParams[31_337] = DeploymentParams({
       token: ANVIL_BUILDERS_DOLLAR,
@@ -72,7 +73,7 @@ contract Common is Script {
     DeploymentParams memory _s = _deploymentParams[block.chainid];
 
     address _implementation = address(new BuildersManager());
-    builderManager = BuildersManager(
+    buildersManager = BuildersManager(
       address(
         new TransparentUpgradeableProxy(
           _implementation,

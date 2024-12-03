@@ -7,11 +7,15 @@ quote_style = 'single'
 number_underscore = 'thousands'
 multiline_func_header = 'params_first_multi'
 sort_imports = true
+# fs_permissions = [{ access = "read-write", path = "./test/unit/example_attestation.json" }]
 
 [profile.default]
 solc_version = '0.8.23'
 libs = ['node_modules', 'lib']
 optimizer_runs = 10_000
+fs_permissions = [{ access = "read-write", path = "./" }]
+ffi = true
+ast = true
 
 [profile.optimized]
 via_ir = true
@@ -20,6 +24,9 @@ out = 'out-via-ir'
 [profile.test]
 via_ir = true
 out = 'out-via-ir'
+fs_permissions = [{ access = "read-write", path = "./" }]
+ffi = true
+ast = true
 
 [profile.docs]
 src = 'src/interfaces/'

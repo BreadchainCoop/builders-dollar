@@ -159,6 +159,13 @@ interface IBuildersManager {
    */
   function updateOpFoundationAttester(address _attester, bool _status) external;
 
+  /**
+   * @notice Internal function to get the project hash from the offchain attestation
+   * @param _attestation The offchain attestation
+   * @return _projectHash The project hash
+   */
+  function hashProject(OffchainAttestation calldata _attestation) external view returns (bytes32 _projectHash);
+
   /*///////////////////////////////////////////////////////////////
                             VIEW
     //////////////////////////////////////////////////////////////*/
@@ -195,21 +202,7 @@ interface IBuildersManager {
   /**
    * @notice Check if the project is eligible
    * @param _projectAttestation The project attestation hash
-   * @dev hash is produced by:
-   * _hashTypedDataV4(
-   *   keccak256(
-   *     abi.encode(
-   *       _VERSION1_ATTEST_TYPEHASH,
-   *       _VERSION1,
-   *       _attestation.schema,
-   *       _attestation.recipient,
-   *       _attestation.time,
-   *       _attestation.expirationTime,
-   *       _attestation.revocable,
-   *       _attestation.refUID,
-   *       keccak256(_attestation.data)
-   *     )
-   *   )
+   * @dev hash is produced using the public `hashProject` function
    * @return _project The project
    */
   function eligibleProject(bytes32 _projectAttestation) external view returns (address _project);
