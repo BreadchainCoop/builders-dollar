@@ -89,7 +89,9 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     if (!(_s.optimismFoundationAttesters.length > 0)) revert SettingsNotSet();
     if (_s.cycleLength * _s.currentSeasonExpiry * _s.seasonDuration * _s.minVouches == 0) revert SettingsNotSet();
 
+    __Ownable_init(msg.sender);
     __EIP712_init(_name, _version);
+
     TOKEN = BuildersDollar(_token);
     EAS = IEAS(_eas);
     _settings = _s;
@@ -127,6 +129,12 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
   }
 
   /// @inheritdoc IBuildersManager
+  function validateOptimismVoter(bytes32 _identityAttestation) external returns (bool _verified) {
+    if (optimismFoundationAttester[msg.sender]) _verified = true;
+    else _verified = _validateOptimismVoter(_identityAttestation, msg.sender);
+  }
+
+  /// @inheritdoc IBuildersManager
   function distributeYield() external {
     uint256 _l = _currentProjects.length;
     if (_l == 0) revert YieldNoProjects();
@@ -152,6 +160,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
 
   /// @inheritdoc IBuildersManager
   function modifyParams(bytes32 _param, uint256 _value) external onlyOwner {
+    if (_value == 0) revert ZeroValue();
     _modifyParams(_param, _value);
   }
 
@@ -255,9 +264,9 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     bytes32 _projectHash = hashProject(_attestation);
     if (eligibleProject[_projectHash] != address(0)) revert AlreadyVerified();
 
-    SchemaRecord memory schemaRecord = EAS.getSchemaRegistry().getSchema(_attestation.schema);
+    SchemaRecord memory _schemaRecord = EAS.getSchemaRegistry().getSchema(_attestation.schema);
 
-    if (schemaRecord.uid == EMPTY_UID) {
+    if (_schemaRecord.uid == EMPTY_UID) {
       _verified = false;
     } else if (!optimismFoundationAttester[_attestation.attester]) {
       _verified = false;
@@ -273,12 +282,6 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
       _verified = false;
     } else {
       Signature memory _sig = _attestation.signature;
-
-      assertTrue(
-        SignatureChecker.isValidSignatureNow(
-          _attestation.attester, _projectHash, abi.encodePacked(_sig.r, _sig.s, _sig.v)
-        )
-      );
 
       _verified = SignatureChecker.isValidSignatureNow(
         _attestation.attester, _projectHash, abi.encodePacked(_sig.r, _sig.s, _sig.v)

@@ -84,6 +84,8 @@ interface IBuildersManager {
   error SettingsNotSet();
   /// @notice Throws when the project is not found
   error YieldNoProjects();
+  /// @notice Throws when the value is zero
+  error ZeroValue();
 
   /*///////////////////////////////////////////////////////////////
                             LOGIC
@@ -131,6 +133,15 @@ interface IBuildersManager {
   function vouch(bytes32 _projectApprovalAttestation, bytes32 _identityAttestation) external;
 
   /**
+   * @notice Validate an Optimism voter
+   * @dev This logic is coupled with vouch functions that include `_identityAttestation` parameter,
+   *      but this function allows for validation when not vouching if needed
+   * @param _identityAttestation The attestation hash of the voter's identity
+   * @return _verified True if the voter is verified
+   */
+  function validateOptimismVoter(bytes32 _identityAttestation) external returns (bool _verified);
+
+  /**
    * @notice Distribute the yield to the current projects in the cycle
    */
   function distributeYield() external;
@@ -158,13 +169,6 @@ interface IBuildersManager {
    * @param _status The status to set for the attester (true = add, false = remove)
    */
   function updateOpFoundationAttester(address _attester, bool _status) external;
-
-  /**
-   * @notice Internal function to get the project hash from the offchain attestation
-   * @param _attestation The offchain attestation
-   * @return _projectHash The project hash
-   */
-  function hashProject(OffchainAttestation calldata _attestation) external view returns (bytes32 _projectHash);
 
   /*///////////////////////////////////////////////////////////////
                             VIEW
@@ -246,4 +250,11 @@ interface IBuildersManager {
    * @return _optimismFoundationAttesters The list of OP Foundation Attesters
    */
   function optimismFoundationAttesters() external view returns (address[] memory _optimismFoundationAttesters);
+
+  /**
+   * @notice Internal function to get the project hash from the offchain attestation
+   * @param _attestation The offchain attestation
+   * @return _projectHash The project hash
+   */
+  function hashProject(OffchainAttestation calldata _attestation) external view returns (bytes32 _projectHash);
 }
