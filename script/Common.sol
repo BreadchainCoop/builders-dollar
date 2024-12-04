@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
+import {BuildersDollar} from '@builders-dollar-token/BuildersDollar.sol';
+import {EIP173ProxyWithReceive} from '@builders-dollar-token/vendor/EIP173ProxyWithReceive.sol';
 import {TransparentUpgradeableProxy} from '@oz/proxy/transparent/TransparentUpgradeableProxy.sol';
 import {BuildersManager, IBuildersManager} from 'contracts/BuildersManager.sol';
 import {Script} from 'forge-std/Script.sol';
+import {BuilderManagerHarness} from 'test/unit/harness/BuilderManagerHarness.sol';
 // solhint-disable-next-line
 import 'script/Registry.sol';
 
@@ -22,9 +25,10 @@ struct DeploymentParams {
  * @dev This contract is intended for use in Scripts and Integration Tests
  */
 contract Common is Script {
+  /// @notice BuildersManager contract
   IBuildersManager public buildersManager;
 
-  // @notice Deployer address will be the owner of the proxy
+  /// @notice Deployer address will be the owner of the proxy
   address public deployer;
 
   /// @notice Deployment parameters for each chain
@@ -69,11 +73,11 @@ contract Common is Script {
     });
   }
 
-  function _deployContracts() internal {
+  function _deployBuildersManager() internal returns (BuildersManager _buildersManager) {
     DeploymentParams memory _s = _deploymentParams[block.chainid];
 
     address _implementation = address(new BuildersManager());
-    buildersManager = BuildersManager(
+    _buildersManager = BuildersManager(
       address(
         new TransparentUpgradeableProxy(
           _implementation,
@@ -83,6 +87,40 @@ contract Common is Script {
           )
         )
       )
+    );
+  }
+
+  function _deployBuildersManagerAsHarness() internal returns (BuilderManagerHarness _buildersManagerHarness) {
+    DeploymentParams memory _s = _deploymentParams[block.chainid];
+
+    address _implementation = address(new BuilderManagerHarness());
+    _buildersManagerHarness = BuilderManagerHarness(
+      address(
+        new TransparentUpgradeableProxy(
+          _implementation,
+          deployer,
+          abi.encodeWithSelector(
+            IBuildersManager.initialize.selector, _s.token, _s.eas, _s.name, _s.version, _s.settings
+          )
+        )
+      )
+    );
+  }
+
+  function _deployBuildersDollar() internal returns (BuildersDollar _buildersDollar, EIP173ProxyWithReceive _proxy) {
+    address _dai = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
+    address _aDai = 0x82E64f49Ed5EC1bC6e43DAD4FC8Af9bb3A2312EE;
+    address _aavePool = 0x794a61358D6845594F94dc1DB02A252b5b4814aD;
+    address _aaveRewards = 0x929EC64c34a17401F460460D4B9390518E5B473e;
+    string memory _name = 'Builders Dollar';
+    string memory _symbol = 'OBDUSD';
+
+    _buildersDollar = new BuildersDollar(_dai, _aDai, _aavePool, _aaveRewards);
+
+    _proxy = new EIP173ProxyWithReceive(
+      address(_buildersDollar),
+      address(this),
+      abi.encodeWithSelector(_buildersDollar.initialize.selector, _name, _symbol)
     );
   }
 }

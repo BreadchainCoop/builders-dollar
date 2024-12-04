@@ -130,7 +130,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
 
   /// @inheritdoc IBuildersManager
   function validateOptimismVoter(bytes32 _identityAttestation) external returns (bool _verified) {
-    if (optimismFoundationAttester[msg.sender]) _verified = true;
+    if (eligibleVoter[msg.sender]) _verified = true;
     else _verified = _validateOptimismVoter(_identityAttestation, msg.sender);
   }
 

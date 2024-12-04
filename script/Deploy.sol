@@ -13,7 +13,7 @@ contract Deploy is Common {
 
   function run() public {
     vm.startBroadcast();
-    _deployContracts();
+    _deployBuildersManager();
     vm.stopBroadcast();
   }
 }

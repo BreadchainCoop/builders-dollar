@@ -9,7 +9,7 @@ contract E2EDeploy is Deploy, Test {
   function setUp() public override {
     super.setUp();
     vm.startPrank(deployer);
-    _deployContracts();
+    buildersManager = _deployBuildersManager();
     vm.stopPrank();
   }
 

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.23;
 
+import {BuildersDollar} from '@builders-dollar-token/BuildersDollar.sol';
+import {EIP173ProxyWithReceive} from '@builders-dollar-token/vendor/EIP173ProxyWithReceive.sol';
 import {Attestation, Signature} from '@eas/Common.sol';
 import {IEAS} from '@eas/IEAS.sol';
 import {ISchemaRegistry, SchemaRecord} from '@eas/ISchemaRegistry.sol';
@@ -10,9 +12,16 @@ import {Test} from 'forge-std/Test.sol';
 import {OffchainAttestation} from 'interfaces/IEasExtensions.sol';
 import {Common} from 'script/Common.sol';
 import 'script/Registry.sol';
+import {BuilderManagerHarness} from 'test/unit/harness/BuilderManagerHarness.sol';
 
 contract UnitBuildersManagerBase is Test, Common {
   uint256 public constant INIT_BALANCE = 1 ether;
+
+  /// @notice BuildersManagerHarness contract for unit tests
+  BuilderManagerHarness public buildersManagerHarness;
+
+  BuildersDollar public buildersDollar;
+  EIP173ProxyWithReceive public bdProxy;
 
   string public configPath = string(bytes('./test/unit/example_project_attestation.json'));
 
@@ -36,14 +45,15 @@ contract UnitBuildersManagerBase is Test, Common {
     deployer = owner;
 
     vm.startPrank(owner);
-    _deployContracts();
+    buildersManager = _deployBuildersManager();
+    (buildersDollar, bdProxy) = _deployBuildersDollar();
+    buildersManagerHarness = _deployBuildersManagerAsHarness();
     vm.stopPrank();
 
     (offchainAttestation, offchainAttestationHash) = _createOffchainAttestationsFromJson();
     identityAttestation1 = _createIdentityAttestations(ANVIL_VOTER_1);
     identityAttestation2 = _createIdentityAttestations(ANVIL_VOTER_2);
 
-    (r, s, v) = _rsvFromJson();
     schemaHash = _getSchemaHash();
   }
 
@@ -76,14 +86,6 @@ contract UnitBuildersManagerBase is Test, Common {
     vm.mockCall(
       ANVIL_EAS, abi.encodeWithSelector(IEAS.isAttestationValid.selector, offchainAttestation.refUID), abi.encode(true)
     );
-  }
-
-  function _rsvFromJson() internal view returns (bytes32 _r, bytes32 _s, uint8 _v) {
-    string memory _configData = vm.readFile(configPath);
-
-    _r = bytes32(stdJson.readBytes32(_configData, '.sig.signature.r'));
-    _s = bytes32(stdJson.readBytes32(_configData, '.sig.signature.s'));
-    _v = uint8(stdJson.readUint(_configData, '.sig.signature.v'));
   }
 
   function _getSchemaHash() internal view returns (bytes32 _hash) {

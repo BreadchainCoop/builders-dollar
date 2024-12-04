@@ -18,7 +18,7 @@ contract IntegrationBase is Common, Test {
     vm.createSelectFork(vm.rpcUrl('gnosis'));
 
     vm.startPrank(owner);
-    _deployContracts();
+    _deployBuildersManager();
     vm.stopPrank();
   }
 }
