@@ -3,6 +3,7 @@ pragma solidity 0.8.23;
 
 import {BuildersDollar} from '@builders-dollar-token/BuildersDollar.sol';
 import {IEAS} from '@eas/IEAS.sol';
+import {OffchainAttestation} from 'interfaces/IEasExtensions.sol';
 
 /**
  * @title BuildersManager Contract
@@ -14,7 +15,7 @@ interface IBuildersManager {
                             DATA
     //////////////////////////////////////////////////////////////*/
   /**
-   * @notice Builder Manager Parameters
+   * @notice Builder Manager settings
    * @param cycleLength The yield distribution cycle length
    * @param lastClaimedTimestamp The timestamp for the last time yield was claimed
    * @param currentSeasonExpiry The timestamp for the current season expiry
@@ -22,7 +23,7 @@ interface IBuildersManager {
    * @param minVouches The minimum number of vouches required for a project to receive yield
    * @param optimismFoundationAttesters The list of attesting addresses for the OP Foundation
    */
-  struct BuilderManagerParams {
+  struct BuilderManagerSettings {
     uint64 cycleLength;
     uint64 lastClaimedTimestamp;
     uint64 currentSeasonExpiry;
@@ -44,9 +45,9 @@ interface IBuildersManager {
   /**
    * @notice Emitted when a voter is validated
    * @param _claimer The caller claiming the voter validation
-   * @param _farcasterID The Farcaster ID to prevent sybil attacks
+   * @param _identityAttestation The identity attestation hash
    */
-  event VoterValidated(address indexed _claimer, uint256 indexed _farcasterID);
+  event VoterValidated(address indexed _claimer, bytes32 indexed _identityAttestation);
 
   /**
    * @notice The event emitted when yield is distributed
@@ -62,36 +63,29 @@ interface IBuildersManager {
   /// @notice Throws when the parameter is already set
   /// @param _attester The attester address
   error AlreadyUpdated(address _attester);
-  /// @notice Throws when the project is already valid
-  error AlreadyValid();
-  /// @notice Throws when the voter is already vouched
+  /// @notice Throws when the project or voter is already verified
+  error AlreadyVerified();
+  /// @notice Throws when the voter has already vouched for a project
   error AlreadyVouched();
-  /// @notice Throws when the attestation is not found
-  error AttestationNotFound();
+  /// @notice Throws when the project is not in the current projects list
+  error CycleNotReady();
   /// @notice Throws when the identification-attestation is required
   error IdAttestationRequired();
   /// @notice Throws when the identification-attestation is invalid
   error InvalidIdAttestation();
+  /// @notice Throws when the project-attestation is invalid
+  error InvalidProjectAttestation();
   /// @notice Throws when the array length is invalid
   error InvalidLength();
-  /// @notice Throws when the attester is not in the OP Foundation list
-  error InvalidOpAttester();
   /// @notice Throws when the bytes32 parameter is incorrect
   /// @param _param The invalid parameter
   error InvalidParamBytes32(bytes32 _param);
-  /// @notice Throws when the bytes parameter is incorrect
-  /// @param _param The invalid parameter
-  error InvalidParamBytes(bytes _param);
-  /// @notice Throws when the project is not in season
-  error NotInSeason();
-  /// @notice Throws when the project is not eligible
-  error NotRecipient();
-  /// @notice Throws when the project is not eligible
-  error ProjectNotEligible();
+  /// @notice Throws when the settings are not set at initialization
+  error SettingsNotSet();
   /// @notice Throws when the project is not found
   error YieldNoProjects();
-  /// @notice Throws when the project is not in the current projects list
-  error YieldNotReady();
+  /// @notice Throws when the value is zero
+  error ZeroValue();
 
   /*///////////////////////////////////////////////////////////////
                             LOGIC
@@ -100,24 +94,52 @@ interface IBuildersManager {
    * @notice Initialize the BuildersManager contract
    * @param _token The BuildersDollar token address
    * @param _eas The Ethereum-Attestation-Service (EAS) contract address
+   * @param _name The human-readable name of the signing domain (i.e. the name the protocol)
+   * @param _version The current major version of the signing domain
    * @param _params The BuilderManager parameters
    */
-  function initialize(address _token, address _eas, BuilderManagerParams memory _params) external;
+  function initialize(
+    address _token,
+    address _eas,
+    string memory _name,
+    string memory _version,
+    BuilderManagerSettings memory _params
+  ) external;
+
+  /**
+   * @notice Verify a project with an off-chain attestation and vouch for a project
+   * @param _offchainProjectAttestation The attestation of the project
+   */
+  function vouch(OffchainAttestation calldata _offchainProjectAttestation) external;
+
+  /**
+   * @notice Verify a project with an off-chain attestation and vouch for a project
+   * @param _offchainProjectAttestation The attestation of the project
+   * @param _identityAttestation The attestation of the voucher's identity
+   */
+  function vouch(OffchainAttestation calldata _offchainProjectAttestation, bytes32 _identityAttestation) external;
 
   /**
    * @notice Vouch for a project
-   * @dev Scenario 1 & 3: Voucher has already vouched
    * @param _projectApprovalAttestation The attestation hash of the project's approval
    */
   function vouch(bytes32 _projectApprovalAttestation) external;
 
   /**
    * @notice Vouch for a project and validate the voucher's identity
-   * @dev Scenario 2 & 4: Voucher has not vouched yet and needs to validate their identity
    * @param _projectApprovalAttestation The attestation hash of the project's approval
    * @param _identityAttestation The attestation hash of the voucher's identity
    */
   function vouch(bytes32 _projectApprovalAttestation, bytes32 _identityAttestation) external;
+
+  /**
+   * @notice Validate an Optimism voter
+   * @dev This logic is coupled with vouch functions that include `_identityAttestation` parameter,
+   *      but this function allows for validation when not vouching if needed
+   * @param _identityAttestation The attestation hash of the voter's identity
+   * @return _verified True if the voter is verified
+   */
+  function validateOptimismVoter(bytes32 _identityAttestation) external returns (bool _verified);
 
   /**
    * @notice Distribute the yield to the current projects in the cycle
@@ -125,13 +147,8 @@ interface IBuildersManager {
   function distributeYield() external;
 
   /**
-   * @notice Remove project from the current projects list and zero out the vouches
-   * @param _project The project
-   */
-  function ejectProject(address _project) external;
-
-  /**
    * @notice Modify the BuilderManager parameters
+   * @dev Access Control: onlyOwner
    * @param _param The parameter to modify
    * @param _value The new value for the parameter
    */
@@ -139,32 +156,38 @@ interface IBuildersManager {
 
   /**
    * @notice Update the status of multiple OP Foundation attesters
+   * @dev Access Control: onlyOwner
    * @param _attestersToUpdate The list of OP Foundation attesters to modify
-   * @param _actions The list of actions to take for the attesters (true = add, false = remove)
+   * @param _statuses The list of statuses to set for the attesters (true = add, false = remove)
    */
-  function batchUpdateOpFoundationAttesters(address[] memory _attestersToUpdate, bool[] memory _actions) external;
+  function batchUpdateOpFoundationAttesters(address[] memory _attestersToUpdate, bool[] memory _statuses) external;
 
   /**
    * @notice Update the status of a OP Foundation attester
+   * @dev Access Control: onlyOwner
    * @param _attester The OP Foundation attester to modify
-   * @param _valid The action to take for the attester (true = add, false = remove)
+   * @param _status The status to set for the attester (true = add, false = remove)
    */
-  function updateOpFoundationAttester(address _attester, bool _valid) external;
+  function updateOpFoundationAttester(address _attester, bool _status) external;
 
   /*///////////////////////////////////////////////////////////////
                             VIEW
     //////////////////////////////////////////////////////////////*/
   /**
    * @notice Get the Builder's Dollar Token
+   * @dev This variable functionally-immutable and set during intialization
    * @return _builderToken The Builder Token
    */
-  function token() external view returns (BuildersDollar _builderToken);
+  // solhint-disable-next-line func-name-mixedcase
+  function TOKEN() external view returns (BuildersDollar _builderToken);
 
   /**
    * @notice Get the Ethereum-Attestation-Service (EAS) contract
+   * @dev This variable functionally-immutable and set during intialization
    * @return _eas The EAS contract
    */
-  function eas() external view returns (IEAS _eas);
+  // solhint-disable-next-line func-name-mixedcase
+  function EAS() external view returns (IEAS _eas);
 
   /**
    * @notice Check if the attester is an Optimism Foundation Attester
@@ -182,10 +205,11 @@ interface IBuildersManager {
 
   /**
    * @notice Check if the project is eligible
-   * @param _attestHash The attestation hash
+   * @param _projectAttestation The project attestation hash
+   * @dev hash is produced using the public `hashProject` function
    * @return _project The project
    */
-  function eligibleProject(bytes32 _attestHash) external view returns (address _project);
+  function eligibleProject(bytes32 _projectAttestation) external view returns (address _project);
 
   /**
    * @notice Get the expiry for a project
@@ -210,10 +234,10 @@ interface IBuildersManager {
   function voterToProjectVouch(address _voter, bytes32 _attestHash) external view returns (bool _vouched);
 
   /**
-   * @notice Get the current BuilderManager parameters
-   * @return __params The BuilderManager parameters
+   * @notice Get the current BuilderManager settings
+   * @return __settings The BuilderManager settings
    */
-  function params() external view returns (BuilderManagerParams memory __params);
+  function settings() external view returns (BuilderManagerSettings memory __settings);
 
   /**
    * @notice Get the current projects
@@ -228,9 +252,9 @@ interface IBuildersManager {
   function optimismFoundationAttesters() external view returns (address[] memory _optimismFoundationAttesters);
 
   /**
-   * @notice Check if the project is already eligible
-   * @param _approvalAttestation The approval hash of the project
-   * @return _valid True if the project is valid
+   * @notice Internal function to get the project hash from the offchain attestation
+   * @param _attestation The offchain attestation
+   * @return _projectHash The project hash
    */
-  function isValidProject(bytes32 _approvalAttestation) external view returns (bool _valid);
+  function hashProject(OffchainAttestation calldata _attestation) external view returns (bytes32 _projectHash);
 }

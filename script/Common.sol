@@ -1,11 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-// import {IERC20} from '@oz/token/ERC20/IERC20.sol';
-import {IBuildersManager} from 'contracts/BuildersManager.sol';
+import {BuildersDollar} from '@builders-dollar-token/BuildersDollar.sol';
+import {EIP173ProxyWithReceive} from '@builders-dollar-token/vendor/EIP173ProxyWithReceive.sol';
+import {TransparentUpgradeableProxy} from '@oz/proxy/transparent/TransparentUpgradeableProxy.sol';
+import {BuildersManager, IBuildersManager} from 'contracts/BuildersManager.sol';
 import {Script} from 'forge-std/Script.sol';
+import {BuilderManagerHarness} from 'test/unit/harness/BuilderManagerHarness.sol';
 // solhint-disable-next-line
 import 'script/Registry.sol';
+
+struct DeploymentParams {
+  address token; // BuildersDollar token address
+  address eas; // Ethereum Attestation Service address
+  string name; // Contract name for EIP712
+  string version; // Contract version for EIP712
+  IBuildersManager.BuilderManagerSettings settings; // Settings struct
+}
 
 /**
  * @title Common Contract
@@ -14,19 +25,102 @@ import 'script/Registry.sol';
  * @dev This contract is intended for use in Scripts and Integration Tests
  */
 contract Common is Script {
-  IBuildersManager public builderManager;
+  /// @notice BuildersManager contract
+  IBuildersManager public buildersManager;
+
+  /// @notice Deployer address will be the owner of the proxy
+  address public deployer;
 
   /// @notice Deployment parameters for each chain
-  // mapping(uint256 _chainId => DeploymentParams _params) internal _deploymentParams;
+  mapping(uint256 _chainId => DeploymentParams _settings) internal _deploymentParams;
 
   function setUp() public virtual {
     // Optimism
-    // _deploymentParams[10] = DeploymentParams('Hello, Optimism!', IERC20(OPTIMISM_DAI));
+    _deploymentParams[10] = DeploymentParams({
+      token: OP_BUILDERS_DOLLAR, // Replace with actual BuildersDollar address
+      eas: OP_EAS, // Replace with actual EAS address
+      name: 'BuildersManager',
+      version: '1',
+      settings: IBuildersManager.BuilderManagerSettings({
+        cycleLength: 7 days,
+        lastClaimedTimestamp: uint64(block.timestamp),
+        currentSeasonExpiry: uint64(block.timestamp + 180 days),
+        seasonDuration: 365 days,
+        minVouches: 3,
+        optimismFoundationAttesters: new address[](0) // Replace with actual attesters
+      })
+    });
+
+    // Anvil
+    address[] memory _attesters = new address[](3);
+    _attesters[0] = ANVIL_FOUNDATION_ATTESTER_1;
+    _attesters[1] = ANVIL_FOUNDATION_ATTESTER_2;
+    _attesters[2] = ANVIL_FOUNDATION_ATTESTER_3;
+
+    _deploymentParams[31_337] = DeploymentParams({
+      token: ANVIL_BUILDERS_DOLLAR,
+      eas: ANVIL_EAS,
+      name: 'BuildersManager',
+      version: '1',
+      settings: IBuildersManager.BuilderManagerSettings({
+        cycleLength: 7 days,
+        lastClaimedTimestamp: uint64(block.timestamp),
+        currentSeasonExpiry: uint64(block.timestamp + 180 days),
+        seasonDuration: 365 days,
+        minVouches: 3,
+        optimismFoundationAttesters: _attesters
+      })
+    });
   }
 
-  function _deployContracts() internal {
-    // DeploymentParams memory _params = _deploymentParams[block.chainid];
+  function _deployBuildersManager() internal returns (BuildersManager _buildersManager) {
+    DeploymentParams memory _s = _deploymentParams[block.chainid];
 
-    // builderManager = new BuildersManager(_params.greeting, _params.token);
+    address _implementation = address(new BuildersManager());
+    _buildersManager = BuildersManager(
+      address(
+        new TransparentUpgradeableProxy(
+          _implementation,
+          deployer,
+          abi.encodeWithSelector(
+            IBuildersManager.initialize.selector, _s.token, _s.eas, _s.name, _s.version, _s.settings
+          )
+        )
+      )
+    );
+  }
+
+  function _deployBuildersManagerAsHarness() internal returns (BuilderManagerHarness _buildersManagerHarness) {
+    DeploymentParams memory _s = _deploymentParams[block.chainid];
+
+    address _implementation = address(new BuilderManagerHarness());
+    _buildersManagerHarness = BuilderManagerHarness(
+      address(
+        new TransparentUpgradeableProxy(
+          _implementation,
+          deployer,
+          abi.encodeWithSelector(
+            IBuildersManager.initialize.selector, _s.token, _s.eas, _s.name, _s.version, _s.settings
+          )
+        )
+      )
+    );
+  }
+
+  function _deployBuildersDollar() internal returns (BuildersDollar _buildersDollar, EIP173ProxyWithReceive _proxy) {
+    address _dai = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
+    address _aDai = 0x82E64f49Ed5EC1bC6e43DAD4FC8Af9bb3A2312EE;
+    address _aavePool = 0x794a61358D6845594F94dc1DB02A252b5b4814aD;
+    address _aaveRewards = 0x929EC64c34a17401F460460D4B9390518E5B473e;
+    string memory _name = 'Builders Dollar';
+    string memory _symbol = 'OBDUSD';
+
+    _buildersDollar = new BuildersDollar(_dai, _aDai, _aavePool, _aaveRewards);
+
+    _proxy = new EIP173ProxyWithReceive(
+      address(_buildersDollar),
+      address(this),
+      abi.encodeWithSelector(_buildersDollar.initialize.selector, _name, _symbol)
+    );
   }
 }
