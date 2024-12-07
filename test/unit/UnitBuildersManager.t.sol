@@ -9,6 +9,7 @@ import {UnitBuildersManagerBase} from 'test/unit/UnitBuildersManagerBase.sol';
 
 // TODO: add tests for individual attributes of attestations
 contract UnitBuildersManagerTestInitialState is UnitBuildersManagerBase {
+  /// @notice test the initial state
   function testInitialState() public view {
     IBuildersManager.BuilderManagerSettings memory _settings = buildersManager.settings();
     assertEq(_settings.cycleLength, 604_800);
@@ -18,16 +19,19 @@ contract UnitBuildersManagerTestInitialState is UnitBuildersManagerBase {
     assertEq(_settings.minVouches, 3);
   }
 
+  /// @notice test the registry addresses
   function testRegistry() public view {
     assertEq(address(buildersManager.TOKEN()), ANVIL_BUILDERS_DOLLAR);
     assertEq(address(buildersManager.EAS()), ANVIL_EAS);
   }
 
+  /// @notice test the initial current projects
   function testInitialCurrentProjects() public view {
     address[] memory _projects = buildersManager.currentProjects();
     assertEq(_projects.length, 0);
   }
 
+  /// @notice test the initial OP Foundation Attesters
   function testInitialOpFoundationAttesters() public view {
     address[] memory _opAttesters = buildersManager.optimismFoundationAttesters();
     assertEq(_opAttesters.length, 3);
@@ -40,10 +44,6 @@ contract UnitBuildersManagerTestAccessControl is UnitBuildersManagerBase {
 
   address[] public newOpFoundationAttesters = [newOpFoundationAttester1, newOpFoundationAttester2];
   bool[] public newOpFoundationAttesterStatuses = [true, true];
-
-  function setUp() public override {
-    super.setUp();
-  }
 
   /// @notice test the owner
   function testOwner() public view {
@@ -147,7 +147,7 @@ contract UnitBuildersManagerTestAccessControl is UnitBuildersManagerBase {
   }
 }
 
-contract UnitBuildersManagerTestVouchCases is UnitBuildersManagerBase {
+contract UnitBuildersManagerTestVouch is UnitBuildersManagerBase {
   /// @notice test offchain attestation creation
   function testOffchainAttestationCreation() public view {
     assertEq(offchainAttestation.version, 1);
@@ -297,22 +297,24 @@ contract UnitBuildersManagerTestVouchCases is UnitBuildersManagerBase {
   }
 }
 
-contract UnitBuildersManagerTestHarness is UnitBuildersManagerBase {
+contract VariablesForHarness {
   bytes32 public projectAttestationHash1 = keccak256('projectAttestationHash1');
   bytes32 public projectAttestationHash2 = keccak256('projectAttestationHash2');
   bytes32 public projectAttestationHash3 = keccak256('projectAttestationHash3');
 
-  address public voter1 = makeAddr('voter1');
-  address public voter2 = makeAddr('voter2');
-  address public voter3 = makeAddr('voter3');
-  address public voter4 = makeAddr('voter4');
+  address public voter1 = address(uint160(uint256(keccak256('voter1'))));
+  address public voter2 = address(uint160(uint256(keccak256('voter2'))));
+  address public voter3 = address(uint160(uint256(keccak256('voter3'))));
+  address public voter4 = address(uint160(uint256(keccak256('voter4'))));
 
-  address public attacker = makeAddr('attacker');
+  address public attacker = address(uint160(uint256(keccak256('attacker'))));
   bytes32 public invalidProjectAttestationHash = keccak256('invalidProjectAttestationHash');
 
   address[] public eligibleVoters = [voter1, voter2, voter3, voter4];
   bytes32[] public eligibleProjects = [projectAttestationHash1, projectAttestationHash2, projectAttestationHash3];
+}
 
+contract UnitBuildersManagerTestVouchWithHarness is UnitBuildersManagerBase, VariablesForHarness {
   function setUp() public override {
     super.setUp();
     buildersManagerHarness.populateEligibleProjects(eligibleProjects);
@@ -398,6 +400,26 @@ contract UnitBuildersManagerTestHarness is UnitBuildersManagerBase {
     vm.expectRevert(abi.encodeWithSelector(IBuildersManager.CycleNotReady.selector));
     buildersManagerHarness.distributeYield();
   }
+}
 
-  // TODO: setup the builders dollar and add tests for the yield distribution
+// TODO: setup the builders dollar and add tests for the yield distribution
+contract UnitBuildersManagerTestYieldDistributionWithHarness is UnitBuildersManagerBase, VariablesForHarness {
+  modifier setupCycleReady() {
+    buildersManagerHarness.populateCurrentProjects(eligibleProjects);
+    vm.warp(buildersManagerHarness.settings().lastClaimedTimestamp + buildersManagerHarness.settings().cycleLength);
+    _;
+  }
+
+  /// @notice test distributing yield when there are no projects
+  function testDistributeYieldRevertNoProjects() public {
+    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.YieldNoProjects.selector));
+    buildersManagerHarness.distributeYield();
+  }
+
+  /// @notice test distributing yield before the cycle is ready
+  function testDistributeYieldRevertBeforeCycleReady() public {
+    buildersManagerHarness.populateCurrentProjects(eligibleProjects);
+    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.CycleNotReady.selector));
+    buildersManagerHarness.distributeYield();
+  }
 }
