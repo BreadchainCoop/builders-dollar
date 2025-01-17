@@ -1,28 +1,28 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: PPL
 pragma solidity 0.8.23;
 
 import {BuildersDollar} from '@builders-dollar-token/BuildersDollar.sol';
-import {Attestation, EMPTY_UID, Signature} from '@eas/Common.sol';
+import {Attestation, EMPTY_UID} from '@eas/Common.sol';
 import {IEAS} from '@eas/IEAS.sol';
-import {SchemaRecord} from '@eas/ISchemaRegistry.sol';
 import {Ownable2StepUpgradeable} from '@oz-upgradeable/access/Ownable2StepUpgradeable.sol';
 import {EIP712Upgradeable} from '@oz-upgradeable/utils/cryptography/EIP712Upgradeable.sol';
-import {SignatureChecker} from '@oz/utils/cryptography/SignatureChecker.sol';
+import {Test} from 'forge-std/Test.sol';
 import {IBuildersManager} from 'interfaces/IBuildersManager.sol';
 import {OffchainAttestation} from 'interfaces/IEasExtensions.sol';
-
-import {Test} from 'forge-std/Test.sol';
 
 // TODO: Remove Test
 contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuildersManager, Test {
   /// @notice The mutliplier used for fixed-point division
   uint256 private constant _PRECISION = 1e18;
-  /// @notice The version of the offchain attestation
-  uint16 private constant _VERSION1 = 1;
-  /// @notice Hash of the data type used to relay calls to the attest function
-  bytes32 private constant _VERSION1_ATTEST_TYPEHASH = keccak256(
-    'Attest(uint16 version,bytes32 schema,address recipient,uint64 time,uint64 expirationTime,bool revocable,bytes32 refUID,bytes data)'
-  );
+  /// @notice The schema for the project attestations
+  bytes32 public constant OP_SCHEMA_638 = 0x8aef6b9adab6252367588ad337f304da1c060cc3190f01d7b72c7e512b9bfb38;
+
+  //   /// @notice The version of the offchain attestation
+  //   uint16 private constant _VERSION1 = 1;
+  //   /// @notice Hash of the data type used to relay calls to the attest function
+  //   bytes32 private constant _VERSION1_ATTEST_TYPEHASH = keccak256(
+  //     'Attest(uint16 version,bytes32 schema,address recipient,uint64 time,uint64 expirationTime,bool revocable,bytes32 refUID,bytes data)'
+  //   );
 
   // --- Registry ---
 
@@ -43,7 +43,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
   /// @inheritdoc IBuildersManager
   mapping(address _voter => bool _isEligibleAndVouched) public eligibleVoter;
   /// @inheritdoc IBuildersManager
-  mapping(bytes32 _projectAttestation => address _project) public eligibleProject;
+  mapping(bytes32 _uid => address _project) public eligibleProject;
   /// @inheritdoc IBuildersManager
   mapping(address _project => uint256 _expiry) public projectToExpiry;
   /// @inheritdoc IBuildersManager
@@ -105,25 +105,18 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
   // --- External Methods ---
 
   /// @inheritdoc IBuildersManager
-  function vouch(OffchainAttestation calldata _offchainProjectAttestation) external {
-    if (!_validateProject(_offchainProjectAttestation)) revert InvalidProjectAttestation();
-    _vouch(hashProject(_offchainProjectAttestation), msg.sender);
-  }
-
-  /// @inheritdoc IBuildersManager
-  function vouch(OffchainAttestation calldata _offchainProjectAttestation, bytes32 _identityAttestation) external {
-    if (!_validateOptimismVoter(_identityAttestation, msg.sender)) revert InvalidIdAttestation();
-    if (!_validateProject(_offchainProjectAttestation)) revert InvalidProjectAttestation();
-    _vouch(hashProject(_offchainProjectAttestation), msg.sender);
-  }
-
-  /// @inheritdoc IBuildersManager
   function vouch(bytes32 _projectAttestation) external {
+    if (eligibleProject[_projectAttestation] == address(0)) {
+      if (!_validateProject(_projectAttestation)) revert InvalidProjectAttestation();
+    }
     _vouch(_projectAttestation, msg.sender);
   }
 
   /// @inheritdoc IBuildersManager
   function vouch(bytes32 _projectAttestation, bytes32 _identityAttestation) external {
+    if (eligibleProject[_projectAttestation] == address(0)) {
+      if (!_validateProject(_projectAttestation)) revert InvalidProjectAttestation();
+    }
     if (!_validateOptimismVoter(_identityAttestation, msg.sender)) revert InvalidIdAttestation();
     _vouch(_projectAttestation, msg.sender);
   }
@@ -199,24 +192,24 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
 
   // --- Public Methods ---
 
-  /// @inheritdoc IBuildersManager
-  function hashProject(OffchainAttestation calldata _attestation) public view returns (bytes32 _projectHash) {
-    _projectHash = _hashTypedDataV4(
-      keccak256(
-        abi.encode(
-          _VERSION1_ATTEST_TYPEHASH,
-          _VERSION1,
-          _attestation.schema,
-          _attestation.recipient,
-          _attestation.time,
-          _attestation.expirationTime,
-          _attestation.revocable,
-          _attestation.refUID,
-          keccak256(_attestation.data)
-        )
-      )
-    );
-  }
+  //   /// @inheritdoc IBuildersManager
+  //   function hashProject(OffchainAttestation calldata _attestation) public view returns (bytes32 _projectHash) {
+  //     _projectHash = _hashTypedDataV4(
+  //       keccak256(
+  //         abi.encode(
+  //           _VERSION1_ATTEST_TYPEHASH,
+  //           _VERSION1,
+  //           _attestation.schema,
+  //           _attestation.recipient,
+  //           _attestation.time,
+  //           _attestation.expirationTime,
+  //           _attestation.revocable,
+  //           _attestation.refUID,
+  //           keccak256(_attestation.data)
+  //         )
+  //       )
+  //     );
+  //   }
 
   // --- Internal Utilities ---
 
@@ -242,57 +235,38 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     if (eligibleVoter[_claimer]) revert AlreadyVerified();
     Attestation memory _attestation = EAS.getAttestation(_identityAttestation);
 
-    if (_attestation.uid == bytes32(0)) {
-      _verified = false;
-    } else if (!optimismFoundationAttester[_attestation.attester]) {
-      _verified = false;
-    } else if (_attestation.recipient != _claimer) {
-      _verified = false;
-    } else {
-      _verified = true;
-      eligibleVoter[_claimer] = _verified;
-      emit VoterValidated(_claimer, _identityAttestation);
-    }
+    if (_attestation.uid == bytes32(0)) return false;
+    if (!optimismFoundationAttester[_attestation.attester]) return false;
+    if (_attestation.recipient != _claimer) return false;
+
+    _verified = true;
+    eligibleVoter[_claimer] = _verified;
+    emit VoterValidated(_claimer, _identityAttestation);
   }
 
   /**
    * @notice Internal function to verify the project's attestation
-   * @param _attestation The project's Attestation
+   * @param _uid The hash of the project's Attestation
    * @return _verified True if the project is verified
    */
-  function _validateProject(OffchainAttestation calldata _attestation) internal returns (bool _verified) {
-    bytes32 _projectHash = hashProject(_attestation);
-    if (eligibleProject[_projectHash] != address(0)) revert AlreadyVerified();
+  function _validateProject(bytes32 _uid) internal returns (bool _verified) {
+    if (eligibleProject[_uid] != address(0)) revert AlreadyVerified();
+    Attestation memory _attestation = EAS.getAttestation(_uid);
 
-    SchemaRecord memory _schemaRecord = EAS.getSchemaRegistry().getSchema(_attestation.schema);
+    (bytes32 _projectRefId,,,,,, string memory _approvalDate,) =
+      abi.decode(_attestation.data, (bytes32, string, string, string, string, string, string, string));
 
-    if (_schemaRecord.uid == EMPTY_UID) {
-      _verified = false;
-    } else if (!optimismFoundationAttester[_attestation.attester]) {
-      _verified = false;
-    } else if (_attestation.version != _VERSION1) {
-      _verified = false;
-    } else if (_attestation.time < _settings.currentSeasonExpiry - _settings.seasonDuration) {
-      _verified = false;
-    } else if (_attestation.expirationTime != 0 && _attestation.expirationTime < block.timestamp) {
-      _verified = false;
-    } else if (_attestation.refUID != EMPTY_UID) {
-      _verified = false;
-    } else if (!EAS.isAttestationValid(_attestation.refUID)) {
-      _verified = false;
-    } else {
-      Signature memory _sig = _attestation.signature;
+    if (_attestation.recipient == address(0)) return false;
+    if (!optimismFoundationAttester[_attestation.attester]) return false;
+    if (_attestation.time < _settings.currentSeasonExpiry - _settings.seasonDuration) return false;
+    if (!EAS.isAttestationValid(_projectRefId)) return false;
 
-      _verified = SignatureChecker.isValidSignatureNow(
-        _attestation.attester, _projectHash, abi.encodePacked(_sig.r, _sig.s, _sig.v)
-      );
-      if (_verified) {
-        address _project = _attestation.recipient;
-        eligibleProject[_projectHash] = _project;
-        projectToExpiry[_project] = _settings.currentSeasonExpiry;
-
-        emit ProjectValidated(_projectHash, _project);
-      }
+    _verified = _attestation.schema == OP_SCHEMA_638;
+    if (_verified) {
+      address _project = _attestation.recipient;
+      eligibleProject[_uid] = _project;
+      projectToExpiry[_project] = _settings.currentSeasonExpiry;
+      emit ProjectValidated(_uid, _project);
     }
   }
 

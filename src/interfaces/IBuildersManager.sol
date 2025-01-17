@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: PPL
 pragma solidity 0.8.23;
 
 import {BuildersDollar} from '@builders-dollar-token/BuildersDollar.sol';
@@ -11,27 +11,6 @@ import {OffchainAttestation} from 'interfaces/IEasExtensions.sol';
  * @notice This contract manages the OP Foundation project voting and yield distribution
  */
 interface IBuildersManager {
-  /*///////////////////////////////////////////////////////////////
-                            DATA
-    //////////////////////////////////////////////////////////////*/
-  /**
-   * @notice Builder Manager settings
-   * @param cycleLength The yield distribution cycle length
-   * @param lastClaimedTimestamp The timestamp for the last time yield was claimed
-   * @param currentSeasonExpiry The timestamp for the current season expiry
-   * @param seasonDuration The duration of a season
-   * @param minVouches The minimum number of vouches required for a project to receive yield
-   * @param optimismFoundationAttesters The list of attesting addresses for the OP Foundation
-   */
-  struct BuilderManagerSettings {
-    uint64 cycleLength;
-    uint64 lastClaimedTimestamp;
-    uint64 currentSeasonExpiry;
-    uint256 seasonDuration;
-    uint256 minVouches;
-    address[] optimismFoundationAttesters;
-  }
-
   /*///////////////////////////////////////////////////////////////
                             EVENTS
     //////////////////////////////////////////////////////////////*/
@@ -88,6 +67,27 @@ interface IBuildersManager {
   error ZeroValue();
 
   /*///////////////////////////////////////////////////////////////
+                            STRUCTS
+    //////////////////////////////////////////////////////////////*/
+  /**
+   * @notice Builder Manager settings
+   * @param cycleLength The yield distribution cycle length
+   * @param lastClaimedTimestamp The timestamp for the last time yield was claimed
+   * @param currentSeasonExpiry The timestamp for the current season expiry
+   * @param seasonDuration The duration of a season
+   * @param minVouches The minimum number of vouches required for a project to receive yield
+   * @param optimismFoundationAttesters The list of attesting addresses for the OP Foundation
+   */
+  struct BuilderManagerSettings {
+    uint64 cycleLength;
+    uint64 lastClaimedTimestamp;
+    uint64 currentSeasonExpiry;
+    uint256 seasonDuration;
+    uint256 minVouches;
+    address[] optimismFoundationAttesters;
+  }
+
+  /*///////////////////////////////////////////////////////////////
                             LOGIC
     //////////////////////////////////////////////////////////////*/
   /**
@@ -106,18 +106,18 @@ interface IBuildersManager {
     BuilderManagerSettings memory _params
   ) external;
 
-  /**
-   * @notice Verify a project with an off-chain attestation and vouch for a project
-   * @param _offchainProjectAttestation The attestation of the project
-   */
-  function vouch(OffchainAttestation calldata _offchainProjectAttestation) external;
+  // /**
+  //  * @notice Verify a project with an off-chain attestation and vouch for a project
+  //  * @param _offchainProjectAttestation The attestation of the project
+  //  */
+  // function vouch(OffchainAttestation calldata _offchainProjectAttestation) external;
 
-  /**
-   * @notice Verify a project with an off-chain attestation and vouch for a project
-   * @param _offchainProjectAttestation The attestation of the project
-   * @param _identityAttestation The attestation of the voucher's identity
-   */
-  function vouch(OffchainAttestation calldata _offchainProjectAttestation, bytes32 _identityAttestation) external;
+  // /**
+  //  * @notice Verify a project with an off-chain attestation and vouch for a project
+  //  * @param _offchainProjectAttestation The attestation of the project
+  //  * @param _identityAttestation The attestation of the voucher's identity
+  //  */
+  // function vouch(OffchainAttestation calldata _offchainProjectAttestation, bytes32 _identityAttestation) external;
 
   /**
    * @notice Vouch for a project
@@ -205,11 +205,10 @@ interface IBuildersManager {
 
   /**
    * @notice Check if the project is eligible
-   * @param _projectAttestation The project attestation hash
-   * @dev hash is produced using the public `hashProject` function
+   * @param _uid The project UID
    * @return _project The project
    */
-  function eligibleProject(bytes32 _projectAttestation) external view returns (address _project);
+  function eligibleProject(bytes32 _uid) external view returns (address _project);
 
   /**
    * @notice Get the expiry for a project
@@ -251,10 +250,10 @@ interface IBuildersManager {
    */
   function optimismFoundationAttesters() external view returns (address[] memory _optimismFoundationAttesters);
 
-  /**
-   * @notice Internal function to get the project hash from the offchain attestation
-   * @param _attestation The offchain attestation
-   * @return _projectHash The project hash
-   */
-  function hashProject(OffchainAttestation calldata _attestation) external view returns (bytes32 _projectHash);
+  //   /**
+  //    * @notice Internal function to get the project hash from the offchain attestation
+  //    * @param _attestation The offchain attestation
+  //    * @return _projectHash The project hash
+  //    */
+  //   function hashProject(OffchainAttestation calldata _attestation) external view returns (bytes32 _projectHash);
 }

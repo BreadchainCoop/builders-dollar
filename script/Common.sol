@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: PPL
 pragma solidity 0.8.23;
 
 import {BuildersDollar} from '@builders-dollar-token/BuildersDollar.sol';
@@ -36,6 +36,9 @@ contract Common is Script {
 
   function setUp() public virtual {
     // Optimism
+    address[] memory _opAttesters = new address[](1);
+    _opAttesters[0] = OP_FOUNDATION_ATTESTER_1;
+
     _deploymentParams[10] = DeploymentParams({
       token: OP_BUILDERS_DOLLAR, // Replace with actual BuildersDollar address
       eas: OP_EAS, // Replace with actual EAS address
@@ -47,15 +50,15 @@ contract Common is Script {
         currentSeasonExpiry: uint64(block.timestamp + 180 days),
         seasonDuration: 365 days,
         minVouches: 3,
-        optimismFoundationAttesters: new address[](0) // Replace with actual attesters
+        optimismFoundationAttesters: _opAttesters
       })
     });
 
     // Anvil
-    address[] memory _attesters = new address[](3);
-    _attesters[0] = ANVIL_FOUNDATION_ATTESTER_1;
-    _attesters[1] = ANVIL_FOUNDATION_ATTESTER_2;
-    _attesters[2] = ANVIL_FOUNDATION_ATTESTER_3;
+    address[] memory _anvilAttesters = new address[](3);
+    _anvilAttesters[0] = ANVIL_FOUNDATION_ATTESTER_1;
+    _anvilAttesters[1] = ANVIL_FOUNDATION_ATTESTER_2;
+    _anvilAttesters[2] = ANVIL_FOUNDATION_ATTESTER_3;
 
     _deploymentParams[31_337] = DeploymentParams({
       token: ANVIL_BUILDERS_DOLLAR,
@@ -68,7 +71,7 @@ contract Common is Script {
         currentSeasonExpiry: uint64(block.timestamp + 180 days),
         seasonDuration: 365 days,
         minVouches: 3,
-        optimismFoundationAttesters: _attesters
+        optimismFoundationAttesters: _anvilAttesters
       })
     });
   }

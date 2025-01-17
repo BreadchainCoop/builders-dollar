@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: PPL
 pragma solidity 0.8.23;
 
 import {BuildersDollar} from '@builders-dollar-token/BuildersDollar.sol';
@@ -27,11 +27,11 @@ contract UnitBuildersManagerBase is Test, Common {
 
   address public owner = makeAddr('owner');
 
-  OffchainAttestation public offchainAttestation;
   Attestation public identityAttestation1;
   Attestation public identityAttestation2;
 
-  bytes32 public offchainAttestationHash;
+  Attestation public projectAttestation;
+  bytes32 public projectAttestationHash;
 
   bytes32 public r;
   bytes32 public s;
@@ -50,9 +50,10 @@ contract UnitBuildersManagerBase is Test, Common {
     buildersManagerHarness = _deployBuildersManagerAsHarness();
     vm.stopPrank();
 
-    (offchainAttestation, offchainAttestationHash) = _createOffchainAttestationsFromJson();
     identityAttestation1 = _createIdentityAttestations(ANVIL_VOTER_1);
     identityAttestation2 = _createIdentityAttestations(ANVIL_VOTER_2);
+
+    (projectAttestation, projectAttestationHash) = _createProjectAttestation();
 
     schemaHash = _getSchemaHash();
   }
@@ -84,7 +85,7 @@ contract UnitBuildersManagerBase is Test, Common {
     );
 
     vm.mockCall(
-      ANVIL_EAS, abi.encodeWithSelector(IEAS.isAttestationValid.selector, offchainAttestation.refUID), abi.encode(true)
+      ANVIL_EAS, abi.encodeWithSelector(IEAS.isAttestationValid.selector, projectAttestation.refUID), abi.encode(true)
     );
   }
 
@@ -93,31 +94,46 @@ contract UnitBuildersManagerBase is Test, Common {
     _hash = bytes32(stdJson.readBytes32(_configData, '.sig.message.schema'));
   }
 
-  function _createOffchainAttestationsFromJson()
-    internal
-    view
-    returns (OffchainAttestation memory _attestation, bytes32 _hash)
-  {
-    string memory _configData = vm.readFile(configPath);
+  // function _createAttestationsFromJson() internal view returns (Attestation memory _attestation, bytes32 _hash) {
+  //   string memory _configData = vm.readFile(configPath);
 
-    _attestation = OffchainAttestation({
-      version: uint16(stdJson.readUint(_configData, '.sig.message.version')),
-      attester: ANVIL_FOUNDATION_ATTESTER_3,
-      schema: bytes32(stdJson.readBytes32(_configData, '.sig.message.schema')),
-      recipient: stdJson.readAddress(_configData, '.sig.message.recipient'),
-      time: uint64(stdJson.readUint(_configData, '.sig.message.time')),
-      expirationTime: uint64(stdJson.readUint(_configData, '.sig.message.expirationTime')),
-      revocable: stdJson.readBool(_configData, '.sig.message.revocable'),
-      refUID: bytes32(stdJson.readBytes32(_configData, '.sig.message.refUID')),
-      data: stdJson.readBytes(_configData, '.sig.message.data'),
-      signature: Signature({
-        v: uint8(stdJson.readUint(_configData, '.sig.signature.v')),
-        r: bytes32(stdJson.readBytes32(_configData, '.sig.signature.r')),
-        s: bytes32(stdJson.readBytes32(_configData, '.sig.signature.s'))
-      })
+  //   _attestation = Attestation({});
+
+  // _attestation = Attestation({
+  //   version: uint16(stdJson.readUint(_configData, '.sig.message.version')),
+  //   attester: ANVIL_FOUNDATION_ATTESTER_3,
+  //   schema: bytes32(stdJson.readBytes32(_configData, '.sig.message.schema')),
+  //   recipient: stdJson.readAddress(_configData, '.sig.message.recipient'),
+  //   time: uint64(stdJson.readUint(_configData, '.sig.message.time')),
+  //   expirationTime: uint64(stdJson.readUint(_configData, '.sig.message.expirationTime')),
+  //   revocable: stdJson.readBool(_configData, '.sig.message.revocable'),
+  //   refUID: bytes32(stdJson.readBytes32(_configData, '.sig.message.refUID')),
+  //   data: stdJson.readBytes(_configData, '.sig.message.data'),
+  //   signature: Signature({
+  //     v: uint8(stdJson.readUint(_configData, '.sig.signature.v')),
+  //     r: bytes32(stdJson.readBytes32(_configData, '.sig.signature.r')),
+  //     s: bytes32(stdJson.readBytes32(_configData, '.sig.signature.s'))
+  //   })
+  // });
+
+  //   _hash = buildersManager.hashProject(_attestation);
+  // }
+
+  function _createProjectAttestation() internal pure returns (Attestation memory _attestation, bytes32 _hash) {
+    _attestation = Attestation({
+      uid: bytes32(0x2fbd12ff8d3a1724f5b915e632ef7f08ad827d2eb775faa79a2962c5c0ebf05d),
+      schema: bytes32(0x41513aa7b99bfea09d389c74aacedaeb13c28fb748569e9e2400109cbe284ee5),
+      time: uint64(1_725_480_303),
+      expirationTime: uint64(0),
+      revocationTime: uint64(0),
+      refUID: bytes32(0x0),
+      recipient: address(0x427),
+      attester: ANVIL_FOUNDATION_ATTESTER_2,
+      revocable: true,
+      data: bytes('data')
     });
 
-    _hash = buildersManager.hashProject(_attestation);
+    _hash = _attestation.uid;
   }
 
   function _createIdentityAttestations(address _recipient) internal pure returns (Attestation memory _attestation) {
