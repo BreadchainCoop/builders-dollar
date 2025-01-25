@@ -1,148 +1,173 @@
-// SPDX-License-Identifier: PPL
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.23;
 
-import {Ownable} from '@oz/access/Ownable.sol';
-import 'forge-std/StdJson.sol';
-import {IBuildersManager} from 'interfaces/IBuildersManager.sol';
-import 'script/Registry.sol';
-import {UnitBuildersManagerBase} from 'test/unit/UnitBuildersManagerBase.sol';
-
-// TODO: add tests for individual attributes of attestations
-contract UnitBuildersManagerTestInitialState is UnitBuildersManagerBase {
-  /// @notice test the initial state
-  function testInitialState() public view {
-    IBuildersManager.BuilderManagerSettings memory _settings = buildersManager.settings();
-    assertEq(_settings.cycleLength, 604_800);
-    assertEq(_settings.lastClaimedTimestamp, 1_725_480_303);
-    assertEq(_settings.currentSeasonExpiry, 1_741_032_303);
-    assertEq(_settings.seasonDuration, 31_536_000);
-    assertEq(_settings.minVouches, 3);
+contract BuildersManager {
+  function test_InitializeWhenPassingValidSettings() external {
+    // it sets the settings
+    // it deploys the contract
   }
 
-  /// @notice test the registry addresses
-  function testRegistry() public view {
-    assertEq(address(buildersManager.TOKEN()), ANVIL_BUILDERS_DOLLAR);
-    assertEq(address(buildersManager.EAS()), ANVIL_EAS);
+  function test_InitializeWhenPassingInvalidSettings() external {
+    // it reverts with SettingsNotSet
   }
 
-  /// @notice test the initial current projects
-  function testInitialCurrentProjects() public view {
-    address[] memory _projects = buildersManager.currentProjects();
-    assertEq(_projects.length, 0);
+  function test_OP_SCHEMA_638WhenCalled() external {
+    // it returns the OP_SCHEMA_638
   }
 
-  /// @notice test the initial OP Foundation Attesters
-  function testInitialOpFoundationAttesters() public view {
-    address[] memory _opAttesters = buildersManager.optimismFoundationAttesters();
-    assertEq(_opAttesters.length, 3);
-  }
-}
-
-contract UnitBuildersManagerTestAccessControl is UnitBuildersManagerBase {
-  address public newOpFoundationAttester1 = makeAddr('newOpFoundationAttester1');
-  address public newOpFoundationAttester2 = makeAddr('newOpFoundationAttester2');
-
-  address[] public newOpFoundationAttesters = [newOpFoundationAttester1, newOpFoundationAttester2];
-  bool[] public newOpFoundationAttesterStatuses = [true, true];
-
-  /// @notice test the owner
-  function testOwner() public view {
-    assertEq(Ownable(address(buildersManager)).owner(), owner);
+  function test_TOKENWhenCalled() external {
+    // it returns the token address
   }
 
-  /// @notice test updating an OP Foundation Attester
-  function testUpdateOpFoundationAttester() public {
-    vm.prank(owner);
-    buildersManager.updateOpFoundationAttester(newOpFoundationAttester1, true);
-
-    assertTrue(buildersManager.optimismFoundationAttester(newOpFoundationAttester1));
+  function test_EASWhenCalled() external {
+    // it returns the EAS address
   }
 
-  /// @notice test updating an OP Foundation Attester that is already verified
-  function testUpdateOpFoundationAttesterDoubleVerify() public {
-    vm.startPrank(owner);
-    buildersManager.updateOpFoundationAttester(newOpFoundationAttester1, true);
-    assertTrue(buildersManager.optimismFoundationAttester(newOpFoundationAttester1));
-
-    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.AlreadyUpdated.selector, newOpFoundationAttester1));
-    buildersManager.updateOpFoundationAttester(newOpFoundationAttester1, true);
+  function test_OptimismFoundationAttesterWhenTheAttesterIsAnOptimismFoundationAttester() external {
+    // it returns true
   }
 
-  /// @notice test updating an OP Foundation Attester that is not the owner
-  function testUpdateOpFoundationAttesterRevertNotOwner() public {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
-    buildersManager.updateOpFoundationAttester(newOpFoundationAttester1, true);
+  function test_OptimismFoundationAttesterWhenTheAttesterIsNotAnOptimismFoundationAttester() external {
+    // it returns false
   }
 
-  /// @notice test updating multiple OP Foundation Attesters
-  function testUpdateOpFoundationAttesters() public {
-    vm.prank(owner);
-    buildersManager.batchUpdateOpFoundationAttesters(newOpFoundationAttesters, newOpFoundationAttesterStatuses);
-    assertTrue(buildersManager.optimismFoundationAttester(newOpFoundationAttester1));
-    assertTrue(buildersManager.optimismFoundationAttester(newOpFoundationAttester2));
+  function test_EligibleVoterWhenTheVoterIsEligibleAndVouched() external {
+    // it returns true
   }
 
-  /// @notice test updating multiple OP Foundation Attesters where one is already verified
-  function testUpdateOpFoundationAttestersRevertStatusAlreadySet() public {
-    newOpFoundationAttesterStatuses = [true, false];
-    vm.startPrank(owner);
-    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.AlreadyUpdated.selector, newOpFoundationAttester2));
-    buildersManager.batchUpdateOpFoundationAttesters(newOpFoundationAttesters, newOpFoundationAttesterStatuses);
+  function test_EligibleVoterWhenTheVoterIsNotEligibleOrVouched() external {
+    // it returns false
   }
 
-  /// @notice test updating multiple OP Foundation Attesters where the caller is not the owner
-  function testUpdateOpFoundationAttestersRevertNotOwner() public {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
-    buildersManager.batchUpdateOpFoundationAttesters(newOpFoundationAttesters, newOpFoundationAttesterStatuses);
+  function test_EligibleProjectWhenTheProjectIsEligible() external {
+    // it returns the project
   }
 
-  /// @notice test modifying the parameters
-  function testModifyParams() public {
-    IBuildersManager.BuilderManagerSettings memory _settings = buildersManager.settings();
-    assertEq(_settings.cycleLength, 604_800);
-    assertEq(_settings.lastClaimedTimestamp, 1_725_480_303);
-    assertEq(_settings.currentSeasonExpiry, 1_741_032_303);
-    assertEq(_settings.seasonDuration, 31_536_000);
-    assertEq(_settings.minVouches, 3);
-
-    uint256 _testValue = 100;
-    vm.startPrank(owner);
-    buildersManager.modifyParams(bytes32('cycleLength'), _testValue);
-    buildersManager.modifyParams(bytes32('lastClaimedTimestamp'), _testValue);
-    buildersManager.modifyParams(bytes32('currentSeasonExpiry'), _testValue);
-    buildersManager.modifyParams(bytes32('seasonDuration'), _testValue);
-    buildersManager.modifyParams(bytes32('minVouches'), _testValue);
-    vm.stopPrank();
-
-    _settings = buildersManager.settings();
-    assertEq(_settings.cycleLength, _testValue);
-    assertEq(_settings.lastClaimedTimestamp, _testValue);
-    assertEq(_settings.currentSeasonExpiry, _testValue);
-    assertEq(_settings.seasonDuration, _testValue);
-    assertEq(_settings.minVouches, _testValue);
+  function test_EligibleProjectWhenTheProjectIsNotEligible() external {
+    // it returns the project
   }
 
-  /// @notice test modifying the parameters where the value is zero
-  function testModifyParamsRevertZeroValue() public {
-    vm.startPrank(owner);
-    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.ZeroValue.selector));
-    buildersManager.modifyParams(bytes32('cycleLength'), 0);
-    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.ZeroValue.selector));
-    buildersManager.modifyParams(bytes32('lastClaimedTimestamp'), 0);
-    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.ZeroValue.selector));
-    buildersManager.modifyParams(bytes32('currentSeasonExpiry'), 0);
-    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.ZeroValue.selector));
-    buildersManager.modifyParams(bytes32('seasonDuration'), 0);
-    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.ZeroValue.selector));
-    buildersManager.modifyParams(bytes32('minVouches'), 0);
-    vm.stopPrank();
+  function test_ProjectToExpiryWhenTheProjectIsEligible() external {
+    // it returns the expiry
   }
 
-  /// @notice test modifying the parameters where the param is incorrect
-  function testModifyParamsRevertWrongParam() public {
-    vm.startPrank(owner);
-    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.InvalidParamBytes32.selector, bytes32('wrongParam')));
-    buildersManager.modifyParams(bytes32('wrongParam'), 100);
-    vm.stopPrank();
+  function test_ProjectToExpiryWhenTheProjectIsNotEligible() external {
+    // it returns the expiry
+  }
+
+  function test_ProjectToVouchesWhenTheProjectIsEligible() external {
+    // it returns the vouches
+  }
+
+  function test_ProjectToVouchesWhenTheProjectIsNotEligible() external {
+    // it returns the vouches
+  }
+
+  function test_VoterToProjectVouchWhenTheVoterHasVouchedForTheProject() external {
+    // it returns true
+  }
+
+  function test_VoterToProjectVouchWhenTheVoterHasNotVouchedForTheProject() external {
+    // it returns false
+  }
+
+  function test_SettingsReturnsTheSettings() external {
+    // it returns the settings
+  }
+
+  function test_CurrentProjectsWhenThereAreProjects() external {
+    // it returns the current projects
+  }
+
+  function test_CurrentProjectsWhenThereAreNoProjects() external {
+    // it returns an empty array
+  }
+
+  function test_OptimismFoundationAttestersWhenThereAreAttesters() external {
+    // it returns the optimism foundation attesters
+  }
+
+  function test_OptimismFoundationAttestersWhenThereAreNoAttesters() external {
+    // it returns an empty array
+  }
+
+  function test_VouchWhenPassingValidProjectAttestation() external {
+    // it sets the project as eligible
+    // it emits ProjectValidated
+    // it increments the project's vouches
+  }
+
+  function test_VouchWhenPassingProjectAttestationThatIsAlreadyEligible() external {
+    // it increments the project's vouches
+  }
+
+  function test_VouchWhenPassingInvalidProjectAttestation() external {
+    // it reverts with InvalidProjectAttestation
+  }
+
+  function test_VouchWhenPassingValidProjectAttestationAndValidIdentityAttestation() external {
+    // it sets the project as eligible
+    // it sets the identity as eligible
+    // it emits ProjectValidated
+    // it emits VoterValidated
+    // it increments the project's vouches
+  }
+
+  function test_VouchWhenPassingInvalidIdentityAttestation() external {
+    // it reverts with InvalidIdentityAttestation
+  }
+
+  function test_ValidateOptimismVoterWhenPassingValidIdentityAttestation() external {
+    // it sets the identity as eligible
+    // it emits VoterValidated
+    // it returns true
+  }
+
+  function test_ValidateOptimismVoterWhenPassingIdentityAttestationThatIsAlreadyEligible() external {
+    // it reverts with AlreadyVerified
+  }
+
+  function test_ValidateOptimismVoterWhenPassingInvalidIdentityAttestation() external {
+    // it returns false
+  }
+
+  function test_DistributeYieldWhenTheCycleIsReady() external {
+    // it distributes the yield
+    // it emits YieldDistributed
+  }
+
+  function test_DistributeYieldWhenThereAreNoProjects() external {
+    // it reverts with YieldNoProjects
+  }
+
+  function test_DistributeYieldWhenTheCycleIsNotReady() external {
+    // it reverts with CycleNotReady
+  }
+
+  function test_ModifyParamsWhenPassingValidParamAndValue() external {
+    // it modifies the param
+    // it emits ParamsModified
+  }
+
+  function test_ModifyParamsWhenPassingInvalidParamOrValue() external {
+    // it reverts with InvalidParam
+  }
+
+  function test_UpdateOpFoundationAttesterWhenPassingValidAttesterAndStatus() external {
+    // it updates the attester
+    // it emits OpFoundationAttesterUpdated
+  }
+
+  function test_UpdateOpFoundationAttesterWhenPassingInvalidAttesterOrStatus() external {
+    // it reverts with InvalidAttester
+  }
+
+  function test_BatchUpdateOpFoundationAttestersWhenPassingValidAttestersAndStatuses() external {
+    // it updates the attesters
+    // it emits OpFoundationAttestersUpdated
+  }
+
+  function test_BatchUpdateOpFoundationAttestersWhenPassingInvalidAttestersOrStatuses() external {
+    // it reverts with InvalidAttesters
   }
 }

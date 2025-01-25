@@ -6,23 +6,13 @@ import {Attestation, EMPTY_UID} from '@eas/Common.sol';
 import {IEAS} from '@eas/IEAS.sol';
 import {Ownable2StepUpgradeable} from '@oz-upgradeable/access/Ownable2StepUpgradeable.sol';
 import {EIP712Upgradeable} from '@oz-upgradeable/utils/cryptography/EIP712Upgradeable.sol';
-import {Test} from 'forge-std/Test.sol';
 import {IBuildersManager} from 'interfaces/IBuildersManager.sol';
-import {OffchainAttestation} from 'interfaces/IEasExtensions.sol';
 
-// TODO: Remove Test
-contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuildersManager, Test {
+contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuildersManager {
   /// @notice The mutliplier used for fixed-point division
   uint256 private constant _PRECISION = 1e18;
-  /// @notice The schema for the project attestations
+  /// @inheritdoc IBuildersManager
   bytes32 public constant OP_SCHEMA_638 = 0x8aef6b9adab6252367588ad337f304da1c060cc3190f01d7b72c7e512b9bfb38;
-
-  //   /// @notice The version of the offchain attestation
-  //   uint16 private constant _VERSION1 = 1;
-  //   /// @notice Hash of the data type used to relay calls to the attest function
-  //   bytes32 private constant _VERSION1_ATTEST_TYPEHASH = keccak256(
-  //     'Attest(uint16 version,bytes32 schema,address recipient,uint64 time,uint64 expirationTime,bool revocable,bytes32 refUID,bytes data)'
-  //   );
 
   // --- Registry ---
 
@@ -190,27 +180,6 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     _opAttesters = _settings.optimismFoundationAttesters;
   }
 
-  // --- Public Methods ---
-
-  //   /// @inheritdoc IBuildersManager
-  //   function hashProject(OffchainAttestation calldata _attestation) public view returns (bytes32 _projectHash) {
-  //     _projectHash = _hashTypedDataV4(
-  //       keccak256(
-  //         abi.encode(
-  //           _VERSION1_ATTEST_TYPEHASH,
-  //           _VERSION1,
-  //           _attestation.schema,
-  //           _attestation.recipient,
-  //           _attestation.time,
-  //           _attestation.expirationTime,
-  //           _attestation.revocable,
-  //           _attestation.refUID,
-  //           keccak256(_attestation.data)
-  //         )
-  //       )
-  //     );
-  //   }
-
   // --- Internal Utilities ---
 
   /**
@@ -253,8 +222,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     if (eligibleProject[_uid] != address(0)) revert AlreadyVerified();
     Attestation memory _attestation = EAS.getAttestation(_uid);
 
-    (bytes32 _projectRefId,,,,,, string memory _approvalDate,) =
-      abi.decode(_attestation.data, (bytes32, string, string, string, string, string, string, string));
+    (bytes32 _projectRefId,) = abi.decode(_attestation.data, (bytes32, bytes));
 
     if (_attestation.recipient == address(0)) return false;
     if (!optimismFoundationAttester[_attestation.attester]) return false;
@@ -298,7 +266,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     else if (_param == 'currentSeasonExpiry') _settings.currentSeasonExpiry = uint64(_value);
     else if (_param == 'seasonDuration') _settings.seasonDuration = _value;
     else if (_param == 'minVouches') _settings.minVouches = _value;
-    else revert InvalidParamBytes32(_param);
+    else revert InvalidParamBytes32();
   }
 
   /**

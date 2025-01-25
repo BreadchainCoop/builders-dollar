@@ -6,7 +6,6 @@ import {EIP173ProxyWithReceive} from '@builders-dollar-token/vendor/EIP173ProxyW
 import {TransparentUpgradeableProxy} from '@oz/proxy/transparent/TransparentUpgradeableProxy.sol';
 import {BuildersManager, IBuildersManager} from 'contracts/BuildersManager.sol';
 import {Script} from 'forge-std/Script.sol';
-import {BuilderManagerHarness} from 'test/unit/harness/BuilderManagerHarness.sol';
 // solhint-disable-next-line
 import 'script/Registry.sol';
 
@@ -81,23 +80,6 @@ contract Common is Script {
 
     address _implementation = address(new BuildersManager());
     _buildersManager = BuildersManager(
-      address(
-        new TransparentUpgradeableProxy(
-          _implementation,
-          deployer,
-          abi.encodeWithSelector(
-            IBuildersManager.initialize.selector, _s.token, _s.eas, _s.name, _s.version, _s.settings
-          )
-        )
-      )
-    );
-  }
-
-  function _deployBuildersManagerAsHarness() internal returns (BuilderManagerHarness _buildersManagerHarness) {
-    DeploymentParams memory _s = _deploymentParams[block.chainid];
-
-    address _implementation = address(new BuilderManagerHarness());
-    _buildersManagerHarness = BuilderManagerHarness(
       address(
         new TransparentUpgradeableProxy(
           _implementation,
