@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: PPL
-pragma solidity 0.8.23;
+pragma solidity 0.8.27;
 
 import {BuildersDollar} from '@builders-dollar-token/BuildersDollar.sol';
 import {EIP173ProxyWithReceive} from '@builders-dollar-token/vendor/EIP173ProxyWithReceive.sol';

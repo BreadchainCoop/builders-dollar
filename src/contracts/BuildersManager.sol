@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: PPL
-pragma solidity 0.8.23;
+pragma solidity 0.8.27;
 
 import {BuildersDollar} from '@builders-dollar-token/BuildersDollar.sol';
 import {Attestation, EMPTY_UID} from '@eas/Common.sol';
@@ -124,9 +124,12 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     if (block.timestamp < _settings.lastClaimedTimestamp + _settings.cycleLength) revert CycleNotReady();
     _settings.lastClaimedTimestamp = uint64(block.timestamp);
 
-    for (uint256 _i; _i < _l; ++_i) {
+    for (uint256 _i; _i < _l;) {
       address _project = _currentProjects[_i];
-      if (projectToExpiry[_project] > block.timestamp) _ejectProject(_project);
+      if (projectToExpiry[_project] < block.timestamp) _ejectProject(_project);
+      unchecked {
+        ++_i;
+      }
     }
     _l = _currentProjects.length;
     if (_l == 0) revert YieldNoProjects();
@@ -135,8 +138,11 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     TOKEN.claimYield(_yield);
     uint256 _yieldPerProject = ((_yield * _PRECISION) / _l) / _PRECISION;
 
-    for (uint256 _i; _i < _l; ++_i) {
+    for (uint256 _i; _i < _l;) {
       TOKEN.transfer(_currentProjects[_i], _yieldPerProject);
+      unchecked {
+        ++_i;
+      }
     }
     emit YieldDistributed(_yieldPerProject, _currentProjects);
   }
@@ -204,7 +210,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     if (eligibleVoter[_claimer]) revert AlreadyVerified();
     Attestation memory _attestation = EAS.getAttestation(_identityAttestation);
 
-    if (_attestation.uid == bytes32(0)) return false;
+    if (_attestation.uid == EMPTY_UID) return false;
     if (!optimismFoundationAttester[_attestation.attester]) return false;
     if (_attestation.recipient != _claimer) return false;
 
@@ -261,12 +267,12 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
    * @param _value The new value
    */
   function _modifyParams(bytes32 _param, uint256 _value) internal {
+    if (_value == 0) revert ZeroValue();
     if (_param == 'cycleLength') _settings.cycleLength = uint64(_value);
-    else if (_param == 'lastClaimedTimestamp') _settings.lastClaimedTimestamp = uint64(_value);
     else if (_param == 'currentSeasonExpiry') _settings.currentSeasonExpiry = uint64(_value);
     else if (_param == 'seasonDuration') _settings.seasonDuration = _value;
     else if (_param == 'minVouches') _settings.minVouches = _value;
-    else revert InvalidParamBytes32();
+    else revert InvalidParameter();
   }
 
   /**
@@ -277,6 +283,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
   function _modifyOpFoundationAttester(address _attester, bool _status) internal {
     bool _currentStatus = optimismFoundationAttester[_attester];
     if (_currentStatus == _status) revert AlreadyUpdated(_attester);
+    if (_attester == address(0)) revert ZeroValue();
 
     optimismFoundationAttester[_attester] = _status;
 

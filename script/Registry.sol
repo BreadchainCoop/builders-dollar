@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: PPL
-pragma solidity 0.8.23;
+pragma solidity 0.8.27;
 
 // Tokens (Optimism Chain)
 address constant OPTIMISM_DAI = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;

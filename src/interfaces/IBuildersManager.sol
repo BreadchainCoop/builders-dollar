@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: PPL
-pragma solidity 0.8.23;
+pragma solidity 0.8.27;
 
 import {BuildersDollar} from '@builders-dollar-token/BuildersDollar.sol';
 import {IEAS} from '@eas/IEAS.sol';
@@ -55,6 +55,13 @@ interface IBuildersManager {
    */
   event YieldDistributed(uint256 _yield, address[] _projects);
 
+  /**
+   * @notice Emitted when an Optimism Foundation attester status is updated
+   * @param _attester The address of the attester being updated
+   * @param _status The new status of the attester (true = added, false = removed)
+   */
+  event OpFoundationAttesterUpdated(address indexed _attester, bool indexed _status);
+
   /*///////////////////////////////////////////////////////////////
                             ERRORS
     //////////////////////////////////////////////////////////////*/
@@ -78,7 +85,7 @@ interface IBuildersManager {
   /// @notice Throws when the array length is invalid
   error InvalidLength();
   /// @notice Throws when the bytes32 parameter is incorrect
-  error InvalidParamBytes32();
+  error InvalidParameter();
   /// @notice Throws when the settings are not set at initialization
   error SettingsNotSet();
   /// @notice Throws when the project is not found

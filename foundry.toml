@@ -10,7 +10,7 @@ sort_imports = true
 # fs_permissions = [{ access = "read-write", path = "./test/unit/example_attestation.json" }]
 
 [profile.default]
-solc_version = '0.8.23'
+solc_version = '0.8.27'
 libs = ['node_modules', 'lib']
 optimizer_runs = 10_000
 fs_permissions = [{ access = "read-write", path = "./" }]

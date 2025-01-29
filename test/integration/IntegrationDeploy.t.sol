@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: PPL
-pragma solidity 0.8.23;
+pragma solidity 0.8.27;
 
 import {Ownable} from '@oz/access/Ownable.sol';
 import {Test} from 'forge-std/Test.sol';
 import {Deploy} from 'script/Deploy.sol';
 
-contract E2EDeploy is Deploy, Test {
+contract IntegrationDeploy is Deploy, Test {
   function setUp() public override {
     super.setUp();
     vm.startPrank(deployer);

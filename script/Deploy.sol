@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: PPL
-pragma solidity 0.8.23;
+pragma solidity 0.8.27;
 
 import {Common} from 'script/Common.sol';
 

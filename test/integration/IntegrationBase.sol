@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: PPL
-pragma solidity 0.8.23;
+pragma solidity 0.8.27;
 
 import {Attestation} from '@eas/Common.sol';
 import {IEAS} from '@eas/IEAS.sol';
@@ -27,7 +27,7 @@ contract IntegrationBase is Common, Test {
   }
 }
 
-contract E2EEAS is IntegrationBase {
+contract IntegrationEAS is IntegrationBase {
   IEAS internal _eas;
 
   bytes32 internal _uid1 = OP_SCHEMA_UID_1;
