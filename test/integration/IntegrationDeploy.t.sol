@@ -13,7 +13,7 @@ contract IntegrationDeploy is Deploy, Test {
     vm.stopPrank();
   }
 
-  function testDeployContracts() public view {
+  function test_DeployContracts() public view {
     assertNotEq(address(buildersManager), address(0));
     assertEq(Ownable(address(buildersManager)).owner(), deployer);
     assertNotEq(deployer, address(0));
