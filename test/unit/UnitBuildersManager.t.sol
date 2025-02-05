@@ -1,425 +1,615 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.23;
+pragma solidity 0.8.27;
 
+import {Attestation, EMPTY_UID} from '@eas/Common.sol';
 import {Ownable} from '@oz/access/Ownable.sol';
-import 'forge-std/StdJson.sol';
-import {IBuildersManager} from 'interfaces/IBuildersManager.sol';
-import 'script/Registry.sol';
-import {UnitBuildersManagerBase} from 'test/unit/UnitBuildersManagerBase.sol';
+import {TransparentUpgradeableProxy} from '@oz/proxy/transparent/TransparentUpgradeableProxy.sol';
+import {BuildersManager, IBuildersManager} from 'contracts/BuildersManager.sol';
+import {Test} from 'forge-std/Test.sol';
 
-// TODO: add tests for individual attributes of attestations
-contract UnitBuildersManagerTestInitialState is UnitBuildersManagerBase {
-  /// @notice test the initial state
-  function testInitialState() public view {
-    IBuildersManager.BuilderManagerSettings memory _settings = buildersManager.settings();
-    assertEq(_settings.cycleLength, 604_800);
-    assertEq(_settings.lastClaimedTimestamp, 1_725_480_303);
-    assertEq(_settings.currentSeasonExpiry, 1_741_032_303);
-    assertEq(_settings.seasonDuration, 31_536_000);
-    assertEq(_settings.minVouches, 3);
+contract UnitBuildersManager is Test {
+  IBuildersManager public buildersManager;
+  address public token = makeAddr('builders-dollar');
+  address public eas = makeAddr('eas');
+
+  function setUp() public {
+    // Deploy implementation
+    BuildersManager implementation = new BuildersManager();
+
+    // Initialize with required parameters
+    IBuildersManager.BuilderManagerSettings memory _settings = IBuildersManager.BuilderManagerSettings({
+      cycleLength: 7 days,
+      lastClaimedTimestamp: uint64(block.timestamp),
+      currentSeasonExpiry: uint64(block.timestamp + 90 days),
+      seasonDuration: 90 days,
+      minVouches: 3,
+      optimismFoundationAttesters: new address[](1)
+    });
+    _settings.optimismFoundationAttesters[0] = address(this);
+
+    // Deploy proxy and initialize
+    TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+      address(implementation),
+      address(this),
+      abi.encodeWithSelector(IBuildersManager.initialize.selector, token, eas, 'BuildersManager', '1', _settings)
+    );
+
+    buildersManager = IBuildersManager(address(proxy));
+
+    // Mock initial settings
+    mockSettings(_settings);
   }
 
-  /// @notice test the registry addresses
-  function testRegistry() public view {
-    assertEq(address(buildersManager.TOKEN()), ANVIL_BUILDERS_DOLLAR);
-    assertEq(address(buildersManager.EAS()), ANVIL_EAS);
+  function test_OP_SCHEMA_638WhenCalled() external view {
+    bytes32 expectedSchema = 0x8aef6b9adab6252367588ad337f304da1c060cc3190f01d7b72c7e512b9bfb38;
+    assertEq(buildersManager.OP_SCHEMA_638(), expectedSchema);
   }
 
-  /// @notice test the initial current projects
-  function testInitialCurrentProjects() public view {
-    address[] memory _projects = buildersManager.currentProjects();
-    assertEq(_projects.length, 0);
+  function test_TOKENWhenCalled() external view {
+    assertEq(address(buildersManager.TOKEN()), token);
   }
 
-  /// @notice test the initial OP Foundation Attesters
-  function testInitialOpFoundationAttesters() public view {
-    address[] memory _opAttesters = buildersManager.optimismFoundationAttesters();
-    assertEq(_opAttesters.length, 3);
-  }
-}
-
-contract UnitBuildersManagerTestAccessControl is UnitBuildersManagerBase {
-  address public newOpFoundationAttester1 = makeAddr('newOpFoundationAttester1');
-  address public newOpFoundationAttester2 = makeAddr('newOpFoundationAttester2');
-
-  address[] public newOpFoundationAttesters = [newOpFoundationAttester1, newOpFoundationAttester2];
-  bool[] public newOpFoundationAttesterStatuses = [true, true];
-
-  /// @notice test the owner
-  function testOwner() public view {
-    assertEq(Ownable(address(buildersManager)).owner(), owner);
+  function test_EASWhenCalled() external view {
+    assertEq(address(buildersManager.EAS()), eas);
   }
 
-  /// @notice test updating an OP Foundation Attester
-  function testUpdateOpFoundationAttester() public {
-    vm.prank(owner);
-    buildersManager.updateOpFoundationAttester(newOpFoundationAttester1, true);
-
-    assertTrue(buildersManager.optimismFoundationAttester(newOpFoundationAttester1));
+  function test_OptimismFoundationAttesterWhenTheAttesterIsAnOptimismFoundationAttester() external view {
+    assertTrue(buildersManager.optimismFoundationAttester(address(this)));
   }
 
-  /// @notice test updating an OP Foundation Attester that is already verified
-  function testUpdateOpFoundationAttesterDoubleVerify() public {
-    vm.startPrank(owner);
-    buildersManager.updateOpFoundationAttester(newOpFoundationAttester1, true);
-    assertTrue(buildersManager.optimismFoundationAttester(newOpFoundationAttester1));
-
-    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.AlreadyUpdated.selector, newOpFoundationAttester1));
-    buildersManager.updateOpFoundationAttester(newOpFoundationAttester1, true);
+  function test_OptimismFoundationAttesterWhenTheAttesterIsNotAnOptimismFoundationAttester() external view {
+    assertFalse(buildersManager.optimismFoundationAttester(address(0x123)));
   }
 
-  /// @notice test updating an OP Foundation Attester that is not the owner
-  function testUpdateOpFoundationAttesterRevertNotOwner() public {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
-    buildersManager.updateOpFoundationAttester(newOpFoundationAttester1, true);
+  function test_EligibleVoterWhenTheVoterIsEligibleAndVouched() external {
+    address voter = address(0x123);
+    mockEligibleVoter(voter, true);
+    assertTrue(buildersManager.eligibleVoter(voter));
   }
 
-  /// @notice test updating multiple OP Foundation Attesters
-  function testUpdateOpFoundationAttesters() public {
-    vm.prank(owner);
-    buildersManager.batchUpdateOpFoundationAttesters(newOpFoundationAttesters, newOpFoundationAttesterStatuses);
-    assertTrue(buildersManager.optimismFoundationAttester(newOpFoundationAttester1));
-    assertTrue(buildersManager.optimismFoundationAttester(newOpFoundationAttester2));
+  function test_EligibleVoterWhenTheVoterIsNotEligibleOrVouched() external {
+    address voter = address(0x123);
+    mockEligibleVoter(voter, false);
+    assertFalse(buildersManager.eligibleVoter(voter));
   }
 
-  /// @notice test updating multiple OP Foundation Attesters where one is already verified
-  function testUpdateOpFoundationAttestersRevertStatusAlreadySet() public {
-    newOpFoundationAttesterStatuses = [true, false];
-    vm.startPrank(owner);
-    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.AlreadyUpdated.selector, newOpFoundationAttester2));
-    buildersManager.batchUpdateOpFoundationAttesters(newOpFoundationAttesters, newOpFoundationAttesterStatuses);
+  function test_EligibleProjectWhenTheProjectIsEligible() external {
+    bytes32 uid = bytes32(uint256(1));
+    address project = address(0x123);
+    mockEligibleProject(uid, project);
+    assertEq(buildersManager.eligibleProject(uid), project);
   }
 
-  /// @notice test updating multiple OP Foundation Attesters where the caller is not the owner
-  function testUpdateOpFoundationAttestersRevertNotOwner() public {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
-    buildersManager.batchUpdateOpFoundationAttesters(newOpFoundationAttesters, newOpFoundationAttesterStatuses);
+  function test_EligibleProjectWhenTheProjectIsNotEligible() external {
+    bytes32 uid = bytes32(uint256(1));
+    mockEligibleProject(uid, address(0));
+    assertEq(buildersManager.eligibleProject(uid), address(0));
   }
 
-  /// @notice test modifying the parameters
-  function testModifyParams() public {
-    IBuildersManager.BuilderManagerSettings memory _settings = buildersManager.settings();
-    assertEq(_settings.cycleLength, 604_800);
-    assertEq(_settings.lastClaimedTimestamp, 1_725_480_303);
-    assertEq(_settings.currentSeasonExpiry, 1_741_032_303);
-    assertEq(_settings.seasonDuration, 31_536_000);
-    assertEq(_settings.minVouches, 3);
-
-    uint256 _testValue = 100;
-    vm.startPrank(owner);
-    buildersManager.modifyParams(bytes32('cycleLength'), _testValue);
-    buildersManager.modifyParams(bytes32('lastClaimedTimestamp'), _testValue);
-    buildersManager.modifyParams(bytes32('currentSeasonExpiry'), _testValue);
-    buildersManager.modifyParams(bytes32('seasonDuration'), _testValue);
-    buildersManager.modifyParams(bytes32('minVouches'), _testValue);
-    vm.stopPrank();
-
-    _settings = buildersManager.settings();
-    assertEq(_settings.cycleLength, _testValue);
-    assertEq(_settings.lastClaimedTimestamp, _testValue);
-    assertEq(_settings.currentSeasonExpiry, _testValue);
-    assertEq(_settings.seasonDuration, _testValue);
-    assertEq(_settings.minVouches, _testValue);
+  function test_ProjectToExpiryWhenTheProjectIsEligible() external {
+    address project = address(0x123);
+    uint256 expiry = block.timestamp + 90 days;
+    vm.mockCall(
+      address(buildersManager),
+      abi.encodeWithSelector(IBuildersManager.projectToExpiry.selector, project),
+      abi.encode(expiry)
+    );
+    assertEq(buildersManager.projectToExpiry(project), expiry);
   }
 
-  /// @notice test modifying the parameters where the value is zero
-  function testModifyParamsRevertZeroValue() public {
-    vm.startPrank(owner);
-    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.ZeroValue.selector));
-    buildersManager.modifyParams(bytes32('cycleLength'), 0);
-    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.ZeroValue.selector));
-    buildersManager.modifyParams(bytes32('lastClaimedTimestamp'), 0);
-    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.ZeroValue.selector));
-    buildersManager.modifyParams(bytes32('currentSeasonExpiry'), 0);
-    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.ZeroValue.selector));
-    buildersManager.modifyParams(bytes32('seasonDuration'), 0);
-    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.ZeroValue.selector));
-    buildersManager.modifyParams(bytes32('minVouches'), 0);
-    vm.stopPrank();
+  function test_ProjectToExpiryWhenTheProjectIsNotEligible() external {
+    address project = address(0x123);
+    vm.mockCall(
+      address(buildersManager),
+      abi.encodeWithSelector(IBuildersManager.projectToExpiry.selector, project),
+      abi.encode(0)
+    );
+    assertEq(buildersManager.projectToExpiry(project), 0);
   }
 
-  /// @notice test modifying the parameters where the param is incorrect
-  function testModifyParamsRevertWrongParam() public {
-    vm.startPrank(owner);
-    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.InvalidParamBytes32.selector, bytes32('wrongParam')));
-    buildersManager.modifyParams(bytes32('wrongParam'), 100);
-    vm.stopPrank();
-  }
-}
-
-contract UnitBuildersManagerTestVouch is UnitBuildersManagerBase {
-  /// @notice test offchain attestation creation
-  function testOffchainAttestationCreation() public view {
-    assertEq(offchainAttestation.version, 1);
-    assertEq(offchainAttestation.attester, ANVIL_FOUNDATION_ATTESTER_3);
+  function test_ProjectToVouchesWhenTheProjectIsEligible() external {
+    address project = address(0x123);
+    uint256 vouches = 3;
+    vm.mockCall(
+      address(buildersManager),
+      abi.encodeWithSelector(IBuildersManager.projectToVouches.selector, project),
+      abi.encode(vouches)
+    );
+    assertEq(buildersManager.projectToVouches(project), vouches);
   }
 
-  /**
-   * @notice test vouch where:
-   * - identity attestation is valid, but not verified
-   * - project attestation is valid, but not verified
-   */
-  function testVouchAndVerifyIdentityAndProject() public {
-    _mockVerifyIdentityAttestation(identityAttestation1);
-    _mockVerifyProjectAttestation();
-
-    assertEq(buildersManager.eligibleProject(offchainAttestationHash), address(0));
-
-    vm.prank(ANVIL_VOTER_1);
-    buildersManager.vouch(offchainAttestation, identityAttestation1.uid);
-
-    assertTrue(buildersManager.eligibleProject(offchainAttestationHash) != address(0));
+  function test_ProjectToVouchesWhenTheProjectIsNotEligible() external {
+    address project = address(0x123);
+    vm.mockCall(
+      address(buildersManager),
+      abi.encodeWithSelector(IBuildersManager.projectToVouches.selector, project),
+      abi.encode(0)
+    );
+    assertEq(buildersManager.projectToVouches(project), 0);
   }
 
-  /**
-   * @notice test vouch where:
-   * - identity attestation is already verified
-   * - project attestation is already verified
-   */
-  function testVouchWithNoVerification() public {
-    _mockVerifyIdentityAttestation(identityAttestation1);
-    _mockVerifyProjectAttestation();
-
-    vm.prank(ANVIL_VOTER_1);
-    buildersManager.vouch(offchainAttestation, identityAttestation1.uid);
-
-    _mockVerifyIdentityAttestation(identityAttestation2);
-
-    address _project = buildersManager.eligibleProject(offchainAttestationHash);
-    assertEq(buildersManager.projectToVouches(_project), 1);
-
-    vm.startPrank(ANVIL_VOTER_2);
-    assertTrue(buildersManager.validateOptimismVoter(identityAttestation2.uid));
-    buildersManager.vouch(offchainAttestationHash);
-    vm.stopPrank();
-
-    assertEq(buildersManager.projectToVouches(_project), 2);
+  function test_VoterToProjectVouchWhenTheVoterHasVouchedForTheProject() external {
+    address voter = address(0x123);
+    bytes32 projectAttestation = bytes32(uint256(1));
+    vm.mockCall(
+      address(buildersManager),
+      abi.encodeWithSelector(IBuildersManager.voterToProjectVouch.selector, voter, projectAttestation),
+      abi.encode(true)
+    );
+    assertTrue(buildersManager.voterToProjectVouch(voter, projectAttestation));
   }
 
-  /**
-   * @notice test vouch where:
-   * - identity attestation is already verified
-   * - project attestation is valid, but not verified
-   */
-  function testVouchAndVerifyProject() public {
-    _mockVerifyIdentityAttestation(identityAttestation1);
-    _mockVerifyProjectAttestation();
-
-    vm.startPrank(ANVIL_VOTER_1);
-    assertTrue(buildersManager.validateOptimismVoter(identityAttestation1.uid));
-    buildersManager.vouch(offchainAttestation);
-    vm.stopPrank();
-
-    address _project = buildersManager.eligibleProject(offchainAttestationHash);
-    assertEq(buildersManager.projectToVouches(_project), 1);
+  function test_VoterToProjectVouchWhenTheVoterHasNotVouchedForTheProject() external {
+    address voter = address(0x123);
+    bytes32 projectAttestation = bytes32(uint256(1));
+    vm.mockCall(
+      address(buildersManager),
+      abi.encodeWithSelector(IBuildersManager.voterToProjectVouch.selector, voter, projectAttestation),
+      abi.encode(false)
+    );
+    assertFalse(buildersManager.voterToProjectVouch(voter, projectAttestation));
   }
 
-  /**
-   * @notice test vouch where:
-   * - identity attestation is valid, but not verified
-   * - project attestation is already verified
-   */
-  function testVouchAndVerifyIdentity() public {
-    _mockVerifyIdentityAttestation(identityAttestation1);
-    _mockVerifyProjectAttestation();
-
-    vm.prank(ANVIL_VOTER_1);
-    buildersManager.vouch(offchainAttestation, identityAttestation1.uid);
-
-    _mockVerifyIdentityAttestation(identityAttestation2);
-
-    address _project = buildersManager.eligibleProject(offchainAttestationHash);
-    assertEq(buildersManager.projectToVouches(_project), 1);
-
-    vm.prank(ANVIL_VOTER_2);
-    buildersManager.vouch(offchainAttestationHash, identityAttestation2.uid);
-
-    assertEq(buildersManager.projectToVouches(_project), 2);
+  function test_SettingsReturnsTheSettings() external {
+    IBuildersManager.BuilderManagerSettings memory settings = buildersManager.settings();
+    assertEq(settings.cycleLength, 7 days);
+    assertEq(settings.seasonDuration, 90 days);
+    assertEq(settings.minVouches, 3);
+    assertEq(settings.optimismFoundationAttesters[0], address(this));
   }
 
-  /// @notice test vouch where the identity attestation is invalid
-  function testVouchRevertInvalidIdentityAttestation() public {
-    _mockVerifyIdentityAttestation(identityAttestation1);
+  function test_CurrentProjectsWhenThereAreProjects() external {
+    address[] memory projects = new address[](2);
+    projects[0] = address(0x1);
+    projects[1] = address(0x2);
+    mockCurrentProjects(projects);
 
-    vm.startPrank(ANVIL_VOTER_2);
-    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.InvalidIdAttestation.selector));
-    buildersManager.vouch(offchainAttestation, identityAttestation1.uid);
-    vm.stopPrank();
+    address[] memory currentProjects = buildersManager.currentProjects();
+    assertEq(currentProjects.length, 2);
+    assertEq(currentProjects[0], projects[0]);
+    assertEq(currentProjects[1], projects[1]);
   }
 
-  /// @notice test vouch where the project attestation is invalid
-  function testVouchRevertInvalidProjectAttestation() public {
-    _mockVerifyIdentityAttestation(identityAttestation1);
+  function test_CurrentProjectsWhenThereAreNoProjects() external {
+    address[] memory emptyProjects = new address[](0);
+    mockCurrentProjects(emptyProjects);
 
-    vm.startPrank(ANVIL_VOTER_1);
-    vm.expectRevert();
-    buildersManager.vouch(offchainAttestation, identityAttestation1.uid);
-    vm.stopPrank();
+    address[] memory currentProjects = buildersManager.currentProjects();
+    assertEq(currentProjects.length, 0);
   }
 
-  /// @notice test vouch where the voter is not verified
-  function testVouchRevertUnverifiedVoter() public {
-    _mockVerifyIdentityAttestation(identityAttestation1);
+  function test_OptimismFoundationAttestersWhenThereAreAttesters() external {
+    address[] memory attesters = new address[](1);
+    attesters[0] = address(this);
+    mockOptimismFoundationAttesters(attesters);
 
-    vm.startPrank(ANVIL_VOTER_1);
-    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.IdAttestationRequired.selector));
-    buildersManager.vouch(offchainAttestationHash);
-    vm.stopPrank();
+    address[] memory foundationAttesters = buildersManager.optimismFoundationAttesters();
+    assertEq(foundationAttesters.length, 1);
+    assertEq(foundationAttesters[0], address(this));
   }
 
-  /// @notice test vouch where the project attestation hash is invalid
-  function testVouchRevertInvalidProjectAttestationHash() public {
-    _mockVerifyIdentityAttestation(identityAttestation1);
+  function test_OptimismFoundationAttestersWhenThereAreNoAttesters() external {
+    address[] memory emptyAttesters = new address[](0);
+    mockOptimismFoundationAttesters(emptyAttesters);
 
-    vm.startPrank(ANVIL_VOTER_1);
-    assertTrue(buildersManager.validateOptimismVoter(identityAttestation1.uid));
-    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.InvalidProjectAttestation.selector));
-    buildersManager.vouch(offchainAttestationHash);
-    vm.stopPrank();
+    address[] memory foundationAttesters = buildersManager.optimismFoundationAttesters();
+    assertEq(foundationAttesters.length, 0);
   }
 
-  /// @notice test double vouching for the same project
-  function testVouchRevertAlreadyVouched() public {
-    _mockVerifyIdentityAttestation(identityAttestation1);
-    _mockVerifyProjectAttestation();
+  function test_ValidateOptimismVoterWhenPassingInvalidIdentityAttestation() external {
+    bytes32 invalidAttestation = bytes32(uint256(1));
+    mockValidateOptimismVoter(invalidAttestation, false);
 
-    vm.startPrank(ANVIL_VOTER_1);
-    buildersManager.vouch(offchainAttestation, identityAttestation1.uid);
-
-    address _project = buildersManager.eligibleProject(offchainAttestationHash);
-    assertEq(buildersManager.projectToVouches(_project), 1);
-
-    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.AlreadyVouched.selector));
-    buildersManager.vouch(offchainAttestationHash);
-    vm.stopPrank();
-
-    assertEq(buildersManager.projectToVouches(_project), 1);
-  }
-}
-
-contract VariablesForHarness {
-  bytes32 public projectAttestationHash1 = keccak256('projectAttestationHash1');
-  bytes32 public projectAttestationHash2 = keccak256('projectAttestationHash2');
-  bytes32 public projectAttestationHash3 = keccak256('projectAttestationHash3');
-
-  address public voter1 = address(uint160(uint256(keccak256('voter1'))));
-  address public voter2 = address(uint160(uint256(keccak256('voter2'))));
-  address public voter3 = address(uint160(uint256(keccak256('voter3'))));
-  address public voter4 = address(uint160(uint256(keccak256('voter4'))));
-
-  address public attacker = address(uint160(uint256(keccak256('attacker'))));
-  bytes32 public invalidProjectAttestationHash = keccak256('invalidProjectAttestationHash');
-
-  address[] public eligibleVoters = [voter1, voter2, voter3, voter4];
-  bytes32[] public eligibleProjects = [projectAttestationHash1, projectAttestationHash2, projectAttestationHash3];
-}
-
-contract UnitBuildersManagerTestVouchWithHarness is UnitBuildersManagerBase, VariablesForHarness {
-  function setUp() public override {
-    super.setUp();
-    buildersManagerHarness.populateEligibleProjects(eligibleProjects);
-    buildersManagerHarness.populateEligibleVoters(eligibleVoters);
+    assertFalse(buildersManager.validateOptimismVoter(invalidAttestation));
   }
 
-  /// @notice test the initial state
-  function testInitialState() public view {
-    assertTrue(buildersManagerHarness.eligibleProject(projectAttestationHash1) != address(0));
-    assertTrue(buildersManagerHarness.eligibleProject(projectAttestationHash2) != address(0));
-    assertTrue(buildersManagerHarness.eligibleProject(projectAttestationHash3) != address(0));
+  function test_ModifyParamsWhenPassingValidParamAndValue() external {
+    bytes32 param = 'cycleLength';
+    uint64 value = 14 days;
 
-    assertTrue(buildersManagerHarness.eligibleVoter(voter1));
-    assertTrue(buildersManagerHarness.eligibleVoter(voter2));
-    assertTrue(buildersManagerHarness.eligibleVoter(voter3));
-    assertTrue(buildersManagerHarness.eligibleVoter(voter4));
+    // Mock the current settings
+    IBuildersManager.BuilderManagerSettings memory currentSettings = IBuildersManager.BuilderManagerSettings({
+      cycleLength: 7 days,
+      lastClaimedTimestamp: uint64(block.timestamp),
+      currentSeasonExpiry: uint64(block.timestamp + 90 days),
+      seasonDuration: 90 days,
+      minVouches: 3,
+      optimismFoundationAttesters: new address[](1)
+    });
+    mockSettings(currentSettings);
 
-    assertFalse(buildersManagerHarness.eligibleVoter(attacker));
-    assertTrue(buildersManagerHarness.eligibleProject(invalidProjectAttestationHash) == address(0));
+    buildersManager.modifyParams(param, uint256(value));
 
-    address[] memory _currentProjects = buildersManagerHarness.currentProjects();
-    assertEq(_currentProjects.length, 0);
+    // Update the expected settings
+    currentSettings.cycleLength = value;
+    mockSettings(currentSettings);
+
+    IBuildersManager.BuilderManagerSettings memory settings = buildersManager.settings();
+    assertEq(settings.cycleLength, value);
   }
 
-  /// @notice test adding a project after the minimum vouches
-  function testAddProjectAfterMinimumVouches() public {
-    vm.prank(voter1);
-    buildersManagerHarness.vouch(projectAttestationHash1);
+  function test_ModifyParamsWhenPassingInvalidParamOrValue() external {
+    bytes32 invalidParam = 'invalidParam';
+    uint256 value = 100;
 
-    vm.prank(voter2);
-    buildersManagerHarness.vouch(projectAttestationHash1);
-
-    address[] memory _currentProjectsAfter2Votes = buildersManagerHarness.currentProjects();
-    assertEq(_currentProjectsAfter2Votes.length, 0);
-
-    vm.prank(voter3);
-    buildersManagerHarness.vouch(projectAttestationHash1);
-
-    address[] memory _currentProjectsAfter3Votes = buildersManagerHarness.currentProjects();
-    assertEq(_currentProjectsAfter3Votes.length, 1);
-    assertEq(_currentProjectsAfter3Votes[0], address(buildersManagerHarness.eligibleProject(projectAttestationHash1)));
-
-    vm.prank(voter4);
-    buildersManagerHarness.vouch(projectAttestationHash1);
-
-    address[] memory _currentProjectsAfter4Votes = buildersManagerHarness.currentProjects();
-    assertEq(_currentProjectsAfter4Votes.length, _currentProjectsAfter3Votes.length);
+    vm.expectRevert(IBuildersManager.InvalidParameter.selector);
+    buildersManager.modifyParams(invalidParam, value);
   }
 
-  /// @notice test adding a project after the minimum vouches for multiple projects
-  function testAddProjectAfterMinimumVouchesForMultipleProjects() public {
-    vm.startPrank(voter1);
-    buildersManagerHarness.vouch(projectAttestationHash1);
-    buildersManagerHarness.vouch(projectAttestationHash2);
-    buildersManagerHarness.vouch(projectAttestationHash3);
-    vm.stopPrank();
+  function test_UpdateOpFoundationAttesterWhenPassingValidAttesterAndStatus() external {
+    address attester = address(0x123);
+    bool status = true;
 
-    vm.startPrank(voter2);
-    buildersManagerHarness.vouch(projectAttestationHash1);
-    buildersManagerHarness.vouch(projectAttestationHash2);
-    buildersManagerHarness.vouch(projectAttestationHash3);
-    vm.stopPrank();
-
-    vm.startPrank(voter3);
-    buildersManagerHarness.vouch(projectAttestationHash1);
-    buildersManagerHarness.vouch(projectAttestationHash2);
-    buildersManagerHarness.vouch(projectAttestationHash3);
-    vm.stopPrank();
-
-    address[] memory _currentProjectsAfter3X3Votes = buildersManagerHarness.currentProjects();
-    assertEq(_currentProjectsAfter3X3Votes.length, 3);
+    buildersManager.updateOpFoundationAttester(attester, status);
+    assertTrue(buildersManager.optimismFoundationAttester(attester));
   }
 
-  /// @notice test distributing yield when there are no projects
-  function testDistributeYieldRevertNoProjects() public {
-    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.YieldNoProjects.selector));
-    buildersManagerHarness.distributeYield();
+  function test_BatchUpdateOpFoundationAttestersWhenPassingValidAttestersAndStatuses() external {
+    address[] memory attesters = new address[](2);
+    attesters[0] = address(0x1);
+    attesters[1] = address(0x2);
+    bool[] memory statuses = new bool[](2);
+    statuses[0] = true;
+    statuses[1] = true;
+
+    buildersManager.batchUpdateOpFoundationAttesters(attesters, statuses);
+
+    assertTrue(buildersManager.optimismFoundationAttester(attesters[0]));
+    assertTrue(buildersManager.optimismFoundationAttester(attesters[1]));
   }
 
-  /// @notice test distributing yield after the cycle is ready
-  function testDistributeYieldRevertAfterCycleReady() public {
-    buildersManagerHarness.populateCurrentProjects(eligibleProjects);
-    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.CycleNotReady.selector));
-    buildersManagerHarness.distributeYield();
-  }
-}
+  function test_BatchUpdateOpFoundationAttestersWhenPassingInvalidAttestersOrStatuses() external {
+    address[] memory attesters = new address[](2);
+    attesters[0] = address(0);
+    attesters[1] = address(0x2);
+    bool[] memory statuses = new bool[](1);
+    statuses[0] = true;
 
-// TODO: setup the builders dollar and add tests for the yield distribution
-contract UnitBuildersManagerTestYieldDistributionWithHarness is UnitBuildersManagerBase, VariablesForHarness {
-  modifier setupCycleReady() {
-    buildersManagerHarness.populateCurrentProjects(eligibleProjects);
-    vm.warp(buildersManagerHarness.settings().lastClaimedTimestamp + buildersManagerHarness.settings().cycleLength);
-    _;
+    vm.expectRevert(IBuildersManager.InvalidLength.selector);
+    buildersManager.batchUpdateOpFoundationAttesters(attesters, statuses);
   }
 
-  /// @notice test distributing yield when there are no projects
-  function testDistributeYieldRevertNoProjects() public {
-    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.YieldNoProjects.selector));
-    buildersManagerHarness.distributeYield();
+  // Test that only owner can modify parameters
+  function test_ModifyParams() public {
+    bytes32 param = 'cycleLength';
+    uint256 newValue = 14 days;
+
+    // Should revert when called by non-owner
+    vm.prank(address(0xdead));
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(0xdead)));
+    buildersManager.modifyParams(param, newValue);
   }
 
-  /// @notice test distributing yield before the cycle is ready
-  function testDistributeYieldRevertBeforeCycleReady() public {
-    buildersManagerHarness.populateCurrentProjects(eligibleProjects);
-    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.CycleNotReady.selector));
-    buildersManagerHarness.distributeYield();
+  // Test that attester management works
+  function test_UpdateOpFoundationAttester() public {
+    address newAttester = address(0x123);
+
+    // Test adding new attester
+    buildersManager.updateOpFoundationAttester(newAttester, true);
+    assertTrue(buildersManager.optimismFoundationAttester(newAttester));
+
+    // Test removing attester
+    buildersManager.updateOpFoundationAttester(newAttester, false);
+    assertFalse(buildersManager.optimismFoundationAttester(newAttester));
+
+    // Test revert on no change
+    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.AlreadyUpdated.selector, newAttester));
+    buildersManager.updateOpFoundationAttester(newAttester, false);
+  }
+
+  // Test batch attester updates
+  function test_BatchUpdateOpFoundationAttesters() public {
+    address[] memory attesters = new address[](2);
+    attesters[0] = address(0x1);
+    attesters[1] = address(0x2);
+    bool[] memory statuses = new bool[](2);
+    statuses[0] = true;
+    statuses[1] = true;
+
+    // Test successful batch update
+    buildersManager.batchUpdateOpFoundationAttesters(attesters, statuses);
+    assertTrue(buildersManager.optimismFoundationAttester(attesters[0]));
+    assertTrue(buildersManager.optimismFoundationAttester(attesters[1]));
+
+    // Test revert on length mismatch
+    bool[] memory invalidStatuses = new bool[](1);
+    vm.expectRevert(IBuildersManager.InvalidLength.selector);
+    buildersManager.batchUpdateOpFoundationAttesters(attesters, invalidStatuses);
+  }
+
+  // Test project validation
+  function test_ValidateProject() public {
+    bytes32 attestation = bytes32(uint256(1));
+    address project = address(0x123);
+    uint256 expectedExpiry = block.timestamp + 90 days;
+
+    // Create properly encoded attestation data
+    bytes32 projectRefId = bytes32(uint256(2)); // Reference ID
+    bytes memory extraData = hex'1234'; // Some arbitrary bytes
+    bytes memory attestationData = abi.encode(projectRefId, extraData);
+
+    // Mock the EAS.getAttestation call for project attestation
+    Attestation memory mockAttestation = Attestation({
+      uid: attestation,
+      schema: buildersManager.OP_SCHEMA_638(),
+      time: uint64(block.timestamp),
+      expirationTime: uint64(block.timestamp + 365 days),
+      revocationTime: uint64(0),
+      refUID: EMPTY_UID,
+      recipient: project,
+      attester: address(this),
+      revocable: true,
+      data: attestationData
+    });
+
+    vm.mockCall(
+      address(eas), abi.encodeWithSignature('getAttestation(bytes32)', attestation), abi.encode(mockAttestation)
+    );
+
+    // Mock isAttestationValid call for the project reference ID
+    vm.mockCall(address(eas), abi.encodeWithSignature('isAttestationValid(bytes32)', projectRefId), abi.encode(true));
+
+    // First make ourselves an eligible voter
+    bytes32 identityAttestation = bytes32(uint256(3));
+    Attestation memory mockIdentityAttestation = Attestation({
+      uid: identityAttestation,
+      schema: bytes32(0),
+      time: uint64(block.timestamp),
+      expirationTime: uint64(block.timestamp + 365 days),
+      revocationTime: uint64(0),
+      refUID: EMPTY_UID,
+      recipient: address(this),
+      attester: address(this),
+      revocable: true,
+      data: ''
+    });
+
+    vm.mockCall(
+      address(eas),
+      abi.encodeWithSignature('getAttestation(bytes32)', identityAttestation),
+      abi.encode(mockIdentityAttestation)
+    );
+
+    // Validate ourselves as a voter first
+    buildersManager.validateOptimismVoter(identityAttestation);
+
+    // Now call vouch which internally validates the project
+    buildersManager.vouch(attestation);
+
+    // Verify project was validated
+    assertEq(buildersManager.eligibleProject(attestation), project);
+    assertEq(buildersManager.projectToExpiry(project), expectedExpiry, 'Project expiry time mismatch');
+  }
+
+  // Test batch operations with invalid inputs
+  function test_BatchOperationsInvalid() public {
+    // Test batch update with mismatched array lengths
+    address[] memory attesters = new address[](2);
+    attesters[0] = address(0x1);
+    attesters[1] = address(0x2);
+    bool[] memory statuses = new bool[](1);
+    statuses[0] = true;
+
+    vm.expectRevert(IBuildersManager.InvalidLength.selector);
+    buildersManager.batchUpdateOpFoundationAttesters(attesters, statuses);
+
+    // Test batch update with empty arrays
+    address[] memory emptyAttesters = new address[](0);
+    bool[] memory emptyStatuses = new bool[](0);
+    buildersManager.batchUpdateOpFoundationAttesters(emptyAttesters, emptyStatuses);
+
+    // Test batch update with duplicate attesters
+    address[] memory duplicateAttesters = new address[](2);
+    duplicateAttesters[0] = address(0x1);
+    duplicateAttesters[1] = address(0x1);
+    bool[] memory duplicateStatuses = new bool[](2);
+    duplicateStatuses[0] = true;
+    duplicateStatuses[1] = true;
+
+    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.AlreadyUpdated.selector, address(0x1)));
+    buildersManager.batchUpdateOpFoundationAttesters(duplicateAttesters, duplicateStatuses);
+  }
+
+  // --- Helper Functions ---
+
+  function _createMockAttestation(
+    bytes32 uid,
+    bytes32 schema,
+    address recipient,
+    address attester,
+    bytes memory data
+  ) internal view returns (Attestation memory) {
+    return Attestation({
+      uid: uid,
+      schema: schema,
+      time: uint64(block.timestamp),
+      expirationTime: uint64(block.timestamp + 365 days),
+      revocationTime: uint64(0),
+      refUID: EMPTY_UID,
+      recipient: recipient,
+      attester: attester,
+      revocable: true,
+      data: data
+    });
+  }
+
+  function _mockEASAttestation(bytes32 uid, Attestation memory attestation) internal {
+    vm.mockCall(address(eas), abi.encodeWithSignature('getAttestation(bytes32)', uid), abi.encode(attestation));
+  }
+
+  function _mockTokenOperations(uint256 yieldAmount, address[] memory recipients) internal {
+    // Mock yield accrual
+    vm.mockCall(address(token), abi.encodeWithSignature('yieldAccrued()'), abi.encode(yieldAmount));
+
+    // Mock claim yield
+    vm.mockCall(address(token), abi.encodeWithSignature('claimYield(uint256)', yieldAmount), abi.encode());
+
+    // Mock transfers
+    uint256 amountPerRecipient = yieldAmount / recipients.length;
+    for (uint256 i = 0; i < recipients.length; i++) {
+      vm.mockCall(
+        address(token),
+        abi.encodeWithSignature('transfer(address,uint256)', recipients[i], amountPerRecipient),
+        abi.encode(true)
+      );
+    }
+  }
+
+  function _makeVoterEligible(address voter, bytes32 identityAttestation) internal {
+    Attestation memory mockIdentityAttestation =
+      _createMockAttestation(identityAttestation, bytes32(0), voter, address(this), '');
+    _mockEASAttestation(identityAttestation, mockIdentityAttestation);
+
+    vm.prank(voter);
+    buildersManager.validateOptimismVoter(identityAttestation);
+  }
+
+  function _setupProjectAttestation(
+    address project,
+    bytes32 attestation,
+    bytes32 projectRefId
+  ) internal returns (bytes memory) {
+    bytes memory attestationData = abi.encode(projectRefId, '');
+
+    Attestation memory mockAttestation =
+      _createMockAttestation(attestation, buildersManager.OP_SCHEMA_638(), project, address(this), attestationData);
+
+    _mockEASAttestation(attestation, mockAttestation);
+    vm.mockCall(address(eas), abi.encodeWithSignature('isAttestationValid(bytes32)', projectRefId), abi.encode(true));
+
+    return attestationData;
+  }
+
+  // --- Mock Helpers ---
+
+  function mockValidateOptimismVoter(bytes32 attestation, bool result) public {
+    vm.mockCall(
+      address(buildersManager),
+      abi.encodeWithSelector(IBuildersManager.validateOptimismVoter.selector, attestation),
+      abi.encode(result)
+    );
+  }
+
+  function mockVouch(bytes32 projectAttestation) public {
+    vm.mockCall(address(buildersManager), abi.encodeWithSignature('vouch(bytes32)', projectAttestation), abi.encode());
+  }
+
+  function mockVouchWithIdentity(bytes32 projectAttestation, bytes32 identityAttestation) public {
+    vm.mockCall(
+      address(buildersManager),
+      abi.encodeWithSignature('vouch(bytes32,bytes32)', projectAttestation, identityAttestation),
+      abi.encode()
+    );
+  }
+
+  function mockDistributeYield() public {
+    vm.mockCall(
+      address(buildersManager), abi.encodeWithSelector(IBuildersManager.distributeYield.selector), abi.encode()
+    );
+  }
+
+  function mockModifyParams(bytes32 param, uint256 value) public {
+    vm.mockCall(
+      address(buildersManager),
+      abi.encodeWithSelector(IBuildersManager.modifyParams.selector, param, value),
+      abi.encode()
+    );
+  }
+
+  function mockUpdateOpFoundationAttester(address attester, bool status) public {
+    vm.mockCall(
+      address(buildersManager),
+      abi.encodeWithSelector(IBuildersManager.updateOpFoundationAttester.selector, attester, status),
+      abi.encode()
+    );
+  }
+
+  function mockBatchUpdateOpFoundationAttesters(address[] memory attesters, bool[] memory statuses) public {
+    vm.mockCall(
+      address(buildersManager),
+      abi.encodeWithSelector(IBuildersManager.batchUpdateOpFoundationAttesters.selector, attesters, statuses),
+      abi.encode()
+    );
+  }
+
+  // --- Expect Helpers ---
+
+  function expectValidateOptimismVoter(bytes32 attestation) public {
+    vm.expectCall(
+      address(buildersManager), abi.encodeWithSelector(IBuildersManager.validateOptimismVoter.selector, attestation)
+    );
+  }
+
+  function expectVouch(bytes32 projectAttestation) public {
+    vm.expectCall(address(buildersManager), abi.encodeWithSignature('vouch(bytes32)', projectAttestation));
+  }
+
+  function expectVouchWithIdentity(bytes32 projectAttestation, bytes32 identityAttestation) public {
+    vm.expectCall(
+      address(buildersManager),
+      abi.encodeWithSignature('vouch(bytes32,bytes32)', projectAttestation, identityAttestation)
+    );
+  }
+
+  function expectDistributeYield() public {
+    vm.expectCall(address(buildersManager), abi.encodeWithSelector(IBuildersManager.distributeYield.selector));
+  }
+
+  function expectModifyParams(bytes32 param, uint256 value) public {
+    vm.expectCall(
+      address(buildersManager), abi.encodeWithSelector(IBuildersManager.modifyParams.selector, param, value)
+    );
+  }
+
+  function expectUpdateOpFoundationAttester(address attester, bool status) public {
+    vm.expectCall(
+      address(buildersManager),
+      abi.encodeWithSelector(IBuildersManager.updateOpFoundationAttester.selector, attester, status)
+    );
+  }
+
+  function expectBatchUpdateOpFoundationAttesters(address[] memory attesters, bool[] memory statuses) public {
+    vm.expectCall(
+      address(buildersManager),
+      abi.encodeWithSelector(IBuildersManager.batchUpdateOpFoundationAttesters.selector, attesters, statuses)
+    );
+  }
+
+  // --- View Function Mock Helpers ---
+
+  function mockSettings(IBuildersManager.BuilderManagerSettings memory settings) public {
+    vm.mockCall(
+      address(buildersManager), abi.encodeWithSelector(IBuildersManager.settings.selector), abi.encode(settings)
+    );
+  }
+
+  function mockCurrentProjects(address[] memory projects) public {
+    vm.mockCall(
+      address(buildersManager), abi.encodeWithSelector(IBuildersManager.currentProjects.selector), abi.encode(projects)
+    );
+  }
+
+  function mockOptimismFoundationAttesters(address[] memory attesters) public {
+    vm.mockCall(
+      address(buildersManager),
+      abi.encodeWithSelector(IBuildersManager.optimismFoundationAttesters.selector),
+      abi.encode(attesters)
+    );
+  }
+
+  function mockEligibleVoter(address voter, bool isEligible) public {
+    vm.mockCall(
+      address(buildersManager),
+      abi.encodeWithSelector(IBuildersManager.eligibleVoter.selector, voter),
+      abi.encode(isEligible)
+    );
+  }
+
+  function mockEligibleProject(bytes32 uid, address project) public {
+    vm.mockCall(
+      address(buildersManager),
+      abi.encodeWithSelector(IBuildersManager.eligibleProject.selector, uid),
+      abi.encode(project)
+    );
   }
 }

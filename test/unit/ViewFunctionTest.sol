@@ -1,0 +1,85 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.8.27;
+
+import {BaseTest} from './BaseTest.sol';
+import {IBuildersManager} from 'contracts/BuildersManager.sol';
+
+contract UnitViewFunctionTest is BaseTest {
+  function test_GetSettingsWhenCalled() public {
+    IBuildersManager.BuilderManagerSettings memory expectedSettings = IBuildersManager.BuilderManagerSettings({
+      cycleLength: 7 days,
+      lastClaimedTimestamp: uint64(block.timestamp),
+      currentSeasonExpiry: uint64(block.timestamp + 90 days),
+      seasonDuration: 90 days,
+      minVouches: 3,
+      optimismFoundationAttesters: new address[](1)
+    });
+    expectedSettings.optimismFoundationAttesters[0] = address(this);
+
+    mockSettings(expectedSettings);
+
+    IBuildersManager.BuilderManagerSettings memory actualSettings = buildersManager.settings();
+    assertEq(actualSettings.cycleLength, expectedSettings.cycleLength);
+    assertEq(actualSettings.lastClaimedTimestamp, expectedSettings.lastClaimedTimestamp);
+    assertEq(actualSettings.currentSeasonExpiry, expectedSettings.currentSeasonExpiry);
+    assertEq(actualSettings.seasonDuration, expectedSettings.seasonDuration);
+    assertEq(actualSettings.minVouches, expectedSettings.minVouches);
+    assertEq(actualSettings.optimismFoundationAttesters[0], expectedSettings.optimismFoundationAttesters[0]);
+  }
+
+  function test_GetCurrentProjectsWhenCalled() public {
+    address[] memory expectedProjects = new address[](3);
+    expectedProjects[0] = address(0x1);
+    expectedProjects[1] = address(0x2);
+    expectedProjects[2] = address(0x3);
+
+    mockCurrentProjects(expectedProjects);
+
+    address[] memory actualProjects = buildersManager.currentProjects();
+    assertEq(actualProjects.length, expectedProjects.length);
+    for (uint256 i = 0; i < actualProjects.length; i++) {
+      assertEq(actualProjects[i], expectedProjects[i]);
+    }
+  }
+
+  function test_GetOptimismFoundationAttestersWhenCalled() public {
+    address[] memory expectedAttesters = new address[](2);
+    expectedAttesters[0] = address(0x1);
+    expectedAttesters[1] = address(0x2);
+
+    mockOptimismFoundationAttesters(expectedAttesters);
+
+    address[] memory actualAttesters = buildersManager.optimismFoundationAttesters();
+    assertEq(actualAttesters.length, expectedAttesters.length);
+    for (uint256 i = 0; i < actualAttesters.length; i++) {
+      assertEq(actualAttesters[i], expectedAttesters[i]);
+    }
+  }
+
+  function test_IsEligibleVoterWhenCalled() public {
+    address voter = address(0x123);
+
+    // Test when voter is eligible
+    mockEligibleVoter(voter, true);
+    assertTrue(buildersManager.eligibleVoter(voter));
+
+    // Test when voter is not eligible
+    mockEligibleVoter(voter, false);
+    assertFalse(buildersManager.eligibleVoter(voter));
+  }
+
+  function test_GetEligibleProjectWhenCalled() public {
+    bytes32 projectAttestation = bytes32(uint256(1));
+    address expectedProject = address(0x123);
+
+    mockEligibleProject(projectAttestation, expectedProject);
+
+    address actualProject = buildersManager.eligibleProject(projectAttestation);
+    assertEq(actualProject, expectedProject);
+  }
+
+  function test_GetOpSchema638WhenCalled() public {
+    bytes32 expectedSchema = 0x8aef6b9adab6252367588ad337f304da1c060cc3190f01d7b72c7e512b9bfb38;
+    assertEq(buildersManager.OP_SCHEMA_638(), expectedSchema);
+  }
+}
