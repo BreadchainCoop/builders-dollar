@@ -33,19 +33,19 @@ BuildersManager::eligibleProject
 ├── when the project is eligible
 │   └── it returns the project
 └── when the project is not eligible
-    └── it returns the project
+    └── it returns address(0)
 
 BuildersManager::projectToExpiry
 ├── when the project is eligible
 │   └── it returns the expiry
 └── when the project is not eligible
-    └── it returns the expiry
+    └── it returns 0
 
 BuildersManager::projectToVouches
 ├── when the project is eligible
 │   └── it returns the vouches
 └── when the project is not eligible
-    └── it returns the vouches
+    └── it returns 0
 
 BuildersManager::voterToProjectVouch
 ├── when the voter has vouched for the project

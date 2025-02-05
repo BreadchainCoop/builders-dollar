@@ -5,149 +5,137 @@ import {BaseTest} from './BaseTest.sol';
 import {IBuildersManager} from 'contracts/BuildersManager.sol';
 
 contract UnitYieldTest is BaseTest {
-  // function test_DistributeYieldWhenCycleIsReady() public {
-  //   // Warp to a specific timestamp first
-  //   vm.warp(1000 days);
-  //   uint256 currentTime = block.timestamp;
+  uint256 public constant CURRENT_TIME = 1000 days;
+  uint64 public constant CYCLE_LENGTH = 7 days;
+  uint64 public constant SEASON_DURATION = 90 days;
+  uint256 public constant MIN_VOUCHES = 3;
+  uint256 public constant PROJECT_COUNT = 3;
 
-  //   // Setup mock projects with required vouches
-  //   address[] memory projects = new address[](3);
-  //   for (uint256 i = 0; i < 3; i++) {
-  //     projects[i] = makeAddr(string.concat('project', vm.toString(i)));
-  //   }
+  function test_DistributeYieldWhenCycleIsReady() public {
+    vm.warp(CURRENT_TIME);
 
-  //   // Mock the internal _currentProjects array state
-  //   vm.store(
-  //     address(buildersManager),
-  //     bytes32(uint256(5)), // slot for _currentProjects array length
-  //     bytes32(uint256(3)) // length of 3
-  //   );
+    // Setup with cycle ready (last claim was 8 days ago)
+    _setupSettings(uint64(CURRENT_TIME - 8 days), uint64(CURRENT_TIME + SEASON_DURATION));
 
-  //   for (uint256 i = 0; i < projects.length; i++) {
-  //     vm.store(
-  //       address(buildersManager),
-  //       keccak256(abi.encode(5)), // slot for _currentProjects array data
-  //       bytes32(uint256(uint160(projects[i])))
-  //     );
-  //   }
+    // Setup projects with future expiry
+    address[] memory projects = _setupProjects(PROJECT_COUNT, CURRENT_TIME + 365 days);
 
-  //   // Mock settings with cycle ready
-  //   IBuildersManager.BuilderManagerSettings memory settings = IBuildersManager.BuilderManagerSettings({
-  //     cycleLength: 7 days,
-  //     lastClaimedTimestamp: uint64(currentTime - 8 days), // Last claim was more than a cycle ago
-  //     currentSeasonExpiry: uint64(currentTime + 90 days),
-  //     seasonDuration: 90 days,
-  //     minVouches: 3,
-  //     optimismFoundationAttesters: new address[](1)
-  //   });
-  //   settings.optimismFoundationAttesters[0] = address(this);
-  //   mockSettings(settings);
+    // Setup token operations and expect event
+    uint256 yieldPerProject = _setupTokenOperations(projects, 1000 ether);
+    vm.expectEmit(true, true, true, true);
+    emit IBuildersManager.YieldDistributed(yieldPerProject, projects);
 
-  //   // Mock project expiry times to be in the future
-  //   for (uint256 i = 0; i < projects.length; i++) {
-  //     vm.mockCall(
-  //       address(buildersManager),
-  //       abi.encodeWithSelector(IBuildersManager.projectToExpiry.selector, projects[i]),
-  //       abi.encode(currentTime + 90 days)
-  //     );
-  //   }
+    buildersManager.distributeYield();
+  }
 
-  //   // Mock token operations
-  //   uint256 yieldAmount = 1000 ether;
-  //   uint256 yieldPerProject = yieldAmount / projects.length;
-  //   _mockTokenOperations(yieldAmount, projects);
+  function test_RevertWhenCycleNotReady() public {
+    vm.warp(CURRENT_TIME);
 
-  //   // Mock the currentProjects view function
-  //   vm.mockCall(
-  //     address(buildersManager), abi.encodeWithSelector(IBuildersManager.currentProjects.selector), abi.encode(projects)
-  //   );
+    // Setup with cycle not ready (last claim was 1 day ago)
+    _setupSettings(uint64(CURRENT_TIME - 1 days), uint64(CURRENT_TIME + SEASON_DURATION));
 
-  //   // Expect events
-  //   vm.expectEmit(true, true, true, true);
-  //   emit IBuildersManager.YieldDistributed(yieldPerProject, projects);
+    // Setup projects with future expiry
+    address[] memory projects = _setupProjects(PROJECT_COUNT, CURRENT_TIME + 365 days);
 
-  //   // Distribute yield
-  //   buildersManager.distributeYield();
-  // }
+    // Setup token operations
+    _setupTokenOperations(projects, 1000 ether);
 
-  // function test_DistributeYieldWhenCycleIsNotReady() public {
-  //   // Setup mock projects with required vouches
-  //   address[] memory projects = mockVouchedProjects(2, 3); // 2 projects, each with 3 vouches
-
-  //   // Mock settings with cycle not ready
-  //   IBuildersManager.BuilderManagerSettings memory settings = IBuildersManager.BuilderManagerSettings({
-  //     cycleLength: 7 days,
-  //     lastClaimedTimestamp: uint64(block.timestamp), // Set to current time to ensure cycle is not ready
-  //     currentSeasonExpiry: uint64(block.timestamp + 90 days),
-  //     seasonDuration: 90 days,
-  //     minVouches: 3,
-  //     optimismFoundationAttesters: new address[](1)
-  //   });
-  //   settings.optimismFoundationAttesters[0] = address(this);
-  //   mockSettings(settings);
-
-  //   // Expect revert
-  //   vm.expectRevert(IBuildersManager.CycleNotReady.selector);
-  //   buildersManager.distributeYield();
-  // }
+    vm.expectRevert(IBuildersManager.CycleNotReady.selector);
+    buildersManager.distributeYield();
+  }
 
   function test_DistributeYieldWhenNoProjects() public {
-    // Mock settings with cycle ready
-    IBuildersManager.BuilderManagerSettings memory settings = IBuildersManager.BuilderManagerSettings({
-      cycleLength: 7 days,
-      lastClaimedTimestamp: uint64(block.timestamp - 7 days),
-      currentSeasonExpiry: uint64(block.timestamp + 90 days),
-      seasonDuration: 90 days,
-      minVouches: 3,
-      optimismFoundationAttesters: new address[](1)
-    });
-    settings.optimismFoundationAttesters[0] = address(this);
-    mockSettings(settings);
+    vm.warp(CURRENT_TIME);
+
+    // Setup with cycle ready
+    _setupSettings(uint64(CURRENT_TIME - CYCLE_LENGTH), uint64(CURRENT_TIME + SEASON_DURATION));
 
     // Mock empty projects array
     address[] memory emptyProjects = new address[](0);
     mockCurrentProjects(emptyProjects);
 
-    // Expect revert
     vm.expectRevert(IBuildersManager.YieldNoProjects.selector);
     buildersManager.distributeYield();
   }
 
-  // function test_DistributeYieldWhenSeasonExpired() public {
-  //   // Mock settings with expired season first
-  //   uint64 seasonExpiry = uint64(block.timestamp - 1); // Past expiry
-  //   IBuildersManager.BuilderManagerSettings memory settings = IBuildersManager.BuilderManagerSettings({
-  //     cycleLength: 7 days,
-  //     lastClaimedTimestamp: uint64(block.timestamp - 7 days),
-  //     currentSeasonExpiry: seasonExpiry,
-  //     seasonDuration: 90 days,
-  //     minVouches: 3,
-  //     optimismFoundationAttesters: new address[](1)
-  //   });
-  //   settings.optimismFoundationAttesters[0] = address(this);
-  //   mockSettings(settings);
+  function test_DistributeYieldWhenSeasonExpired() public {
+    vm.warp(CURRENT_TIME);
 
-  //   // Setup mock projects with required vouches
-  //   address[] memory projects = mockVouchedProjects(2, 3); // 2 projects, each with 3 vouches
+    // Setup with cycle ready but expired season
+    _setupSettings(uint64(CURRENT_TIME - CYCLE_LENGTH), uint64(CURRENT_TIME - 1 days));
 
-  //   // Mock project expiry times to be in the past (which will trigger ejection with new logic)
-  //   for (uint256 i = 0; i < projects.length; i++) {
-  //     vm.mockCall(
-  //       address(buildersManager),
-  //       abi.encodeWithSelector(IBuildersManager.projectToExpiry.selector, projects[i]),
-  //       abi.encode(block.timestamp - 1) // Past expiry will trigger ejection
-  //     );
-  //   }
+    // Setup projects with expired timestamps
+    address[] memory projects = _setupProjects(PROJECT_COUNT, CURRENT_TIME - 1 days);
 
-  //   // Mock token operations
-  //   uint256 yieldAmount = 1000 ether;
-  //   _mockTokenOperations(yieldAmount, projects);
+    // Setup token operations
+    _setupTokenOperations(projects, 1000 ether);
 
-  //   // Warp time forward to ensure we're past the cycle length
-  //   vm.warp(block.timestamp + 8 days); // More than cycleLength (7 days)
+    vm.expectRevert(IBuildersManager.YieldNoProjects.selector);
+    buildersManager.distributeYield();
+  }
 
-  //   // Expect revert with YieldNoProjects since all projects will be ejected
-  //   vm.expectRevert(IBuildersManager.YieldNoProjects.selector);
-  //   buildersManager.distributeYield();
-  // }
+  // --- Internal Helpers ---
+
+  function _setupSettings(uint64 lastClaimedTimestamp, uint64 currentSeasonExpiry) internal {
+    IBuildersManager.BuilderManagerSettings memory settings = IBuildersManager.BuilderManagerSettings({
+      cycleLength: CYCLE_LENGTH,
+      lastClaimedTimestamp: lastClaimedTimestamp,
+      currentSeasonExpiry: currentSeasonExpiry,
+      seasonDuration: SEASON_DURATION,
+      minVouches: MIN_VOUCHES,
+      optimismFoundationAttesters: new address[](1)
+    });
+    settings.optimismFoundationAttesters[0] = address(this);
+    mockSettings(settings);
+
+    // Set lastClaimedTimestamp directly in storage
+    bytes32 settingsSlot = bytes32(uint256(2));
+    bytes32 currentValue = vm.load(address(buildersManager), settingsSlot);
+    bytes32 clearedValue = bytes32(uint256(currentValue) & 0xFFFFFFFFFFFFFFFF);
+    bytes32 newValue = bytes32(uint256(clearedValue) | (uint256(lastClaimedTimestamp) << 64));
+    vm.store(address(buildersManager), settingsSlot, newValue);
+  }
+
+  function _setupProjects(uint256 count, uint256 expiryTime) internal returns (address[] memory projects) {
+    projects = new address[](count);
+    for (uint256 i = 0; i < count; i++) {
+      projects[i] = makeAddr(string.concat('project', vm.toString(i)));
+    }
+
+    // Setup array storage
+    bytes32 slot = bytes32(uint256(12));
+    vm.store(address(buildersManager), slot, bytes32(count));
+    bytes32 arrayStartSlot = keccak256(abi.encodePacked(slot));
+
+    for (uint256 i = 0; i < count; i++) {
+      // Store project address
+      bytes32 itemSlot = bytes32(uint256(arrayStartSlot) + i);
+      bytes32 itemValue = bytes32(uint256(uint160(projects[i])));
+      vm.store(address(buildersManager), itemSlot, itemValue);
+
+      // Store project expiry
+      bytes32 expirySlot = keccak256(abi.encode(projects[i], uint256(9)));
+      vm.store(address(buildersManager), expirySlot, bytes32(uint256(expiryTime)));
+
+      // Setup attestations and vouches
+      bytes32 projectUid = keccak256(abi.encodePacked('project', i));
+      mockEligibleProject(projectUid, projects[i]);
+      vm.mockCall(
+        address(buildersManager),
+        abi.encodeWithSelector(IBuildersManager.projectToVouches.selector, projects[i]),
+        abi.encode(MIN_VOUCHES)
+      );
+    }
+  }
+
+  function _setupTokenOperations(
+    address[] memory projects,
+    uint256 yieldAmount
+  ) internal returns (uint256 yieldPerProject) {
+    yieldPerProject = yieldAmount / projects.length;
+    _mockTokenOperations(yieldAmount, projects);
+    vm.mockCall(
+      address(buildersManager), abi.encodeWithSelector(IBuildersManager.currentProjects.selector), abi.encode(projects)
+    );
+  }
 }

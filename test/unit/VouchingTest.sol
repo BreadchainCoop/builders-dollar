@@ -20,6 +20,14 @@ contract UnitVouchingTest is BaseTest {
     // Make voter eligible
     _makeVoterEligible(address(this), identityAttestation);
 
+    // Setup project attestation
+    bytes memory attestationData = abi.encode(projectRefId, '');
+    Attestation memory mockProjectAttestation = _createMockAttestation(
+      projectAttestation, buildersManager.OP_SCHEMA_638(), project, address(this), attestationData
+    );
+    _mockEASAttestation(projectAttestation, mockProjectAttestation);
+    vm.mockCall(address(eas), abi.encodeWithSignature('isAttestationValid(bytes32)', projectRefId), abi.encode(true));
+
     // Expect events
     vm.expectEmit(true, true, true, true);
     emit IBuildersManager.ProjectValidated(projectAttestation, project);

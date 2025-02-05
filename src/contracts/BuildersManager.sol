@@ -87,7 +87,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     _settings = _s;
 
     uint256 _l = _s.optimismFoundationAttesters.length;
-    for (uint256 _i; _i < _l; ++_i) {
+    for (uint256 _i; _i < _l; _i++) {
       optimismFoundationAttester[_s.optimismFoundationAttesters[_i]] = true;
     }
   }
@@ -124,13 +124,19 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     if (block.timestamp < _settings.lastClaimedTimestamp + _settings.cycleLength) revert CycleNotReady();
     _settings.lastClaimedTimestamp = uint64(block.timestamp);
 
-    for (uint256 _i; _i < _l;) {
+    address[] memory _projectsToEject = new address[](_l);
+    uint256 _ejectCount;
+    for (uint256 _i; _i < _l; _i++) {
       address _project = _currentProjects[_i];
-      if (projectToExpiry[_project] < block.timestamp) _ejectProject(_project);
-      unchecked {
-        ++_i;
+      if (projectToExpiry[_project] < block.timestamp) {
+        _projectsToEject[_i] = _project;
+        _ejectCount++;
       }
     }
+    for (uint256 _i; _i < _l; _i++) {
+      _ejectProject(_projectsToEject[_i]);
+    }
+
     _l = _currentProjects.length;
     if (_l == 0) revert YieldNoProjects();
 
@@ -138,11 +144,8 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     TOKEN.claimYield(_yield);
     uint256 _yieldPerProject = ((_yield * _PRECISION) / _l) / _PRECISION;
 
-    for (uint256 _i; _i < _l;) {
+    for (uint256 _i; _i < _l; _i++) {
       TOKEN.transfer(_currentProjects[_i], _yieldPerProject);
-      unchecked {
-        ++_i;
-      }
     }
     emit YieldDistributed(_yieldPerProject, _currentProjects);
   }
@@ -249,6 +252,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
    * @param _project The project to eject
    */
   function _ejectProject(address _project) internal {
+    if (_project == address(0)) return;
     projectToExpiry[_project] = 0;
     projectToVouches[_project] = 0;
 
@@ -257,6 +261,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
       if (_currentProjects[_i] == _project) {
         _currentProjects[_i] = _currentProjects[_l - 1];
         _currentProjects.pop();
+        break;
       }
     }
   }
