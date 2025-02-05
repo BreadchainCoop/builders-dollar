@@ -8,6 +8,8 @@ import {Deploy} from 'script/Deploy.sol';
 contract IntegrationDeploy is Deploy, Test {
   function setUp() public override {
     super.setUp();
+
+    deployer = address(0x420);
     vm.startPrank(deployer);
     buildersManager = _deployBuildersManager();
     vm.stopPrank();
