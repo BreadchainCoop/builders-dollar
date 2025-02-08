@@ -25,6 +25,8 @@ contract UnitParameterTest is BaseTest {
 
     // Test modifying cycle length
     uint256 newCycleLength = 14 days;
+    vm.expectEmit(true, true, true, true);
+    emit IBuildersManager.ParameterModified(CYCLE_LENGTH, newCycleLength);
     buildersManager.modifyParams(CYCLE_LENGTH, newCycleLength);
     settings.cycleLength = uint64(newCycleLength);
     mockSettings(settings);
@@ -32,6 +34,8 @@ contract UnitParameterTest is BaseTest {
 
     // Test modifying min vouches
     uint256 newMinVouches = 5;
+    vm.expectEmit(true, true, true, true);
+    emit IBuildersManager.ParameterModified(MIN_VOUCHES, newMinVouches);
     buildersManager.modifyParams(MIN_VOUCHES, newMinVouches);
     settings.minVouches = newMinVouches;
     mockSettings(settings);
@@ -39,6 +43,8 @@ contract UnitParameterTest is BaseTest {
 
     // Test modifying season duration
     uint256 newSeasonDuration = 180 days;
+    vm.expectEmit(true, true, true, true);
+    emit IBuildersManager.ParameterModified(SEASON_DURATION, newSeasonDuration);
     buildersManager.modifyParams(SEASON_DURATION, newSeasonDuration);
     settings.seasonDuration = newSeasonDuration;
     mockSettings(settings);
@@ -46,6 +52,8 @@ contract UnitParameterTest is BaseTest {
 
     // Test modifying current season expiry
     uint256 newSeasonExpiry = block.timestamp + 365 days;
+    vm.expectEmit(true, true, true, true);
+    emit IBuildersManager.ParameterModified(CURRENT_SEASON_EXPIRY, newSeasonExpiry);
     buildersManager.modifyParams(CURRENT_SEASON_EXPIRY, newSeasonExpiry);
     settings.currentSeasonExpiry = uint64(newSeasonExpiry);
     mockSettings(settings);

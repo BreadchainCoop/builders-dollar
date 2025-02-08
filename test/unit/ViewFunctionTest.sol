@@ -78,8 +78,44 @@ contract UnitViewFunctionTest is BaseTest {
     assertEq(actualProject, expectedProject);
   }
 
-  function test_GetOpSchema638WhenCalled() public {
+  function test_GetOpSchema638WhenCalled() public view {
     bytes32 expectedSchema = 0x8aef6b9adab6252367588ad337f304da1c060cc3190f01d7b72c7e512b9bfb38;
     assertEq(buildersManager.OP_SCHEMA_638(), expectedSchema);
+  }
+
+  function test_GetEligibleProjectByUidWhenCalled() public {
+    address project = address(0x123);
+    bytes32 expectedUid = bytes32(uint256(1));
+
+    // Mock the call
+    vm.mockCall(
+      address(buildersManager),
+      abi.encodeWithSelector(IBuildersManager.eligibleProjectByUid.selector, project),
+      abi.encode(expectedUid)
+    );
+
+    bytes32 actualUid = buildersManager.eligibleProjectByUid(project);
+    assertEq(actualUid, expectedUid);
+  }
+
+  function test_GetProjectToVouchersWhenCalled() public {
+    address project = address(0x123);
+    address[] memory expectedVouchers = new address[](3);
+    expectedVouchers[0] = address(0x1);
+    expectedVouchers[1] = address(0x2);
+    expectedVouchers[2] = address(0x3);
+
+    // Mock the call
+    vm.mockCall(
+      address(buildersManager),
+      abi.encodeWithSelector(IBuildersManager.projectToVouchers.selector, project),
+      abi.encode(expectedVouchers)
+    );
+
+    address[] memory actualVouchers = buildersManager.projectToVouchers(project);
+    assertEq(actualVouchers.length, expectedVouchers.length);
+    for (uint256 i = 0; i < actualVouchers.length; i++) {
+      assertEq(actualVouchers[i], expectedVouchers[i]);
+    }
   }
 }

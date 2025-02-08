@@ -35,12 +35,16 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
   /// @inheritdoc IBuildersManager
   mapping(bytes32 _uid => address _project) public eligibleProject;
   /// @inheritdoc IBuildersManager
+  mapping(address _project => bytes32 _uid) public eligibleProjectByUid;
+  /// @inheritdoc IBuildersManager
   mapping(address _project => uint256 _expiry) public projectToExpiry;
   /// @inheritdoc IBuildersManager
   mapping(address _project => uint256 _totalVouches) public projectToVouches;
   /// @inheritdoc IBuildersManager
-  mapping(address _voter => mapping(bytes32 _attestHash => bool _vouched)) public voterToProjectVouch;
+  mapping(address _voter => mapping(bytes32 _uid => bool _vouched)) public voterToProjectVouch;
 
+  /// @notice See projectToVouchers @IBuildersManager
+  mapping(address _project => address[] _vouchers) internal _projectToVouchers;
   /// @notice See currentProjects @IBuildersManager
   address[] internal _currentProjects;
 
@@ -48,13 +52,13 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
 
   /**
    * @notice Modifier to check if the project exists and if voter has already vouched for the project
-   * @param _projectAttestation The attestation hash of the project
+   * @param _uid The uid of the project
    * @param _caller The address of the caller
    */
-  modifier eligible(bytes32 _projectAttestation, address _caller) {
+  modifier eligible(bytes32 _uid, address _caller) {
     if (!eligibleVoter[_caller]) revert IdAttestationRequired();
-    if (eligibleProject[_projectAttestation] == address(0)) revert InvalidProjectAttestation();
-    if (voterToProjectVouch[_caller][_projectAttestation]) revert AlreadyVouched();
+    if (eligibleProject[_uid] == address(0)) revert InvalidProjectUid();
+    if (voterToProjectVouch[_caller][_uid]) revert AlreadyVouched();
     _;
   }
 
@@ -95,20 +99,20 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
   // --- External Methods ---
 
   /// @inheritdoc IBuildersManager
-  function vouch(bytes32 _projectAttestation) external {
-    if (eligibleProject[_projectAttestation] == address(0)) {
-      if (!_validateProject(_projectAttestation)) revert InvalidProjectAttestation();
+  function vouch(bytes32 _uid) external {
+    if (eligibleProject[_uid] == address(0)) {
+      if (!_validateProject(_uid)) revert InvalidProjectUid();
     }
-    _vouch(_projectAttestation, msg.sender);
+    _vouch(_uid, msg.sender);
   }
 
   /// @inheritdoc IBuildersManager
-  function vouch(bytes32 _projectAttestation, bytes32 _identityAttestation) external {
-    if (eligibleProject[_projectAttestation] == address(0)) {
-      if (!_validateProject(_projectAttestation)) revert InvalidProjectAttestation();
+  function vouch(bytes32 _uid, bytes32 _identityAttestation) external {
+    if (eligibleProject[_uid] == address(0)) {
+      if (!_validateProject(_uid)) revert InvalidProjectUid();
     }
     if (!_validateOptimismVoter(_identityAttestation, msg.sender)) revert InvalidIdAttestation();
-    _vouch(_projectAttestation, msg.sender);
+    _vouch(_uid, msg.sender);
   }
 
   /// @inheritdoc IBuildersManager
@@ -180,8 +184,22 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
   }
 
   /// @inheritdoc IBuildersManager
+  function projectToVouchers(address _project) external view returns (address[] memory _vouchers) {
+    _vouchers = _projectToVouchers[_project];
+  }
+
+  /// @inheritdoc IBuildersManager
   function currentProjects() external view returns (address[] memory _projects) {
     _projects = _currentProjects;
+  }
+
+  /// @inheritdoc IBuildersManager
+  function currentProjectUids() external view returns (bytes32[] memory _uids) {
+    uint256 _l = _currentProjects.length;
+    _uids = new bytes32[](_l);
+    for (uint256 _i; _i < _l; _i++) {
+      _uids[_i] = eligibleProjectByUid[_currentProjects[_i]];
+    }
   }
 
   /// @inheritdoc IBuildersManager
@@ -193,14 +211,21 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
 
   /**
    * @notice Internal function to vouch for a project
-   * @param _projectAttestation The attestation hash of the project
+   * @param _uid The uid of the project
    * @param _caller The address of the caller
    */
-  function _vouch(bytes32 _projectAttestation, address _caller) internal eligible(_projectAttestation, _caller) {
-    voterToProjectVouch[_caller][_projectAttestation] = true;
-    address _project = eligibleProject[_projectAttestation];
+  function _vouch(bytes32 _uid, address _caller) internal eligible(_uid, _caller) {
+    voterToProjectVouch[_caller][_uid] = true;
+    address _project = eligibleProject[_uid];
     projectToVouches[_project]++;
-    if (projectToVouches[_project] == _settings.minVouches) _currentProjects.push(_project);
+    _projectToVouchers[_project].push(_caller);
+
+    emit VouchRecorded(_caller, _project, _uid);
+
+    if (projectToVouches[_project] == _settings.minVouches) {
+      _currentProjects.push(_project);
+      emit ProjectReachedMinVouches(_project, _uid);
+    }
   }
 
   /**
@@ -224,7 +249,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
 
   /**
    * @notice Internal function to verify the project's attestation
-   * @param _uid The hash of the project's Attestation
+   * @param _uid The uid of the project's Attestation
    * @return _verified True if the project is verified
    */
   function _validateProject(bytes32 _uid) internal returns (bool _verified) {
@@ -242,6 +267,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     if (_verified) {
       address _project = _attestation.recipient;
       eligibleProject[_uid] = _project;
+      eligibleProjectByUid[_project] = _uid;
       projectToExpiry[_project] = _settings.currentSeasonExpiry;
       emit ProjectValidated(_uid, _project);
     }
@@ -278,6 +304,8 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     else if (_param == 'seasonDuration') _settings.seasonDuration = _value;
     else if (_param == 'minVouches') _settings.minVouches = _value;
     else revert InvalidParameter();
+
+    emit ParameterModified(_param, _value);
   }
 
   /**
@@ -303,5 +331,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
         }
       }
     }
+
+    emit OpFoundationAttesterUpdated(_attester, _status);
   }
 }

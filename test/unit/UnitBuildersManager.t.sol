@@ -150,7 +150,7 @@ contract UnitBuildersManager is Test {
     assertFalse(buildersManager.voterToProjectVouch(voter, projectAttestation));
   }
 
-  function test_SettingsReturnsTheSettings() external {
+  function test_SettingsReturnsTheSettings() external view {
     IBuildersManager.BuilderManagerSettings memory settings = buildersManager.settings();
     assertEq(settings.cycleLength, 7 days);
     assertEq(settings.seasonDuration, 90 days);

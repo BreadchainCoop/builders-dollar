@@ -74,6 +74,61 @@ contract UnitYieldTest is BaseTest {
     buildersManager.distributeYield();
   }
 
+  function test_GetCurrentProjectUidsWhenCalled() public {
+    vm.warp(CURRENT_TIME);
+
+    // Setup projects with future expiry and minimum vouches
+    address[] memory projects = _setupProjects(2, CURRENT_TIME + 365 days);
+
+    // For each project, set up attestations and vouches
+    bytes32[] memory expectedUids = new bytes32[](2);
+    for (uint256 i = 0; i < projects.length; i++) {
+      // Create project attestation UID directly
+      bytes32 projectUid = bytes32(uint256(i + 1)); // Use simple incremental UIDs
+      bytes32 projectRefId = bytes32(uint256(i + 100)); // Use different range for ref IDs
+
+      // Mock the project validation
+      vm.mockCall(
+        address(buildersManager),
+        abi.encodeWithSelector(IBuildersManager.eligibleProject.selector, projectUid),
+        abi.encode(projects[i])
+      );
+
+      // Mock the project to UID mapping
+      vm.mockCall(
+        address(buildersManager),
+        abi.encodeWithSelector(IBuildersManager.eligibleProjectByUid.selector, projects[i]),
+        abi.encode(projectUid)
+      );
+
+      // Store the expected UID
+      expectedUids[i] = projectUid;
+
+      // Set up MIN_VOUCHES number of voters for this project
+      for (uint256 j = 0; j < MIN_VOUCHES; j++) {
+        address voter = makeAddr(string.concat('voter', vm.toString(i), '-', vm.toString(j)));
+        bytes32 voterUid = bytes32(uint256(1000 + (i * MIN_VOUCHES) + j)); // Use different range for voter UIDs
+
+        // Make voter eligible
+        _makeVoterEligible(voter, voterUid);
+
+        // Mock the vouch call
+        vm.prank(voter);
+        buildersManager.vouch(projectUid);
+      }
+    }
+
+    // Mock currentProjects to return the projects array
+    mockCurrentProjects(projects);
+
+    // Get and verify the current project UIDs
+    bytes32[] memory actualUids = buildersManager.currentProjectUids();
+    assertEq(actualUids.length, expectedUids.length);
+    for (uint256 i = 0; i < actualUids.length; i++) {
+      assertEq(actualUids[i], expectedUids[i]);
+    }
+  }
+
   // --- Internal Helpers ---
 
   function _setupSettings(uint64 lastClaimedTimestamp, uint64 currentSeasonExpiry) internal {
