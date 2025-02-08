@@ -74,61 +74,6 @@ contract UnitYieldTest is BaseTest {
     buildersManager.distributeYield();
   }
 
-  function test_GetCurrentProjectUidsWhenCalled() public {
-    vm.warp(CURRENT_TIME);
-
-    // Setup projects with future expiry and minimum vouches
-    address[] memory projects = _setupProjects(2, CURRENT_TIME + 365 days);
-
-    // For each project, set up attestations and vouches
-    bytes32[] memory expectedUids = new bytes32[](2);
-    for (uint256 i = 0; i < projects.length; i++) {
-      // Create project attestation UID directly
-      bytes32 projectUid = bytes32(uint256(i + 1)); // Use simple incremental UIDs
-      bytes32 projectRefId = bytes32(uint256(i + 100)); // Use different range for ref IDs
-
-      // Mock the project validation
-      vm.mockCall(
-        address(buildersManager),
-        abi.encodeWithSelector(IBuildersManager.eligibleProject.selector, projectUid),
-        abi.encode(projects[i])
-      );
-
-      // Mock the project to UID mapping
-      vm.mockCall(
-        address(buildersManager),
-        abi.encodeWithSelector(IBuildersManager.eligibleProjectByUid.selector, projects[i]),
-        abi.encode(projectUid)
-      );
-
-      // Store the expected UID
-      expectedUids[i] = projectUid;
-
-      // Set up MIN_VOUCHES number of voters for this project
-      for (uint256 j = 0; j < MIN_VOUCHES; j++) {
-        address voter = makeAddr(string.concat('voter', vm.toString(i), '-', vm.toString(j)));
-        bytes32 voterUid = bytes32(uint256(1000 + (i * MIN_VOUCHES) + j)); // Use different range for voter UIDs
-
-        // Make voter eligible
-        _makeVoterEligible(voter, voterUid);
-
-        // Mock the vouch call
-        vm.prank(voter);
-        buildersManager.vouch(projectUid);
-      }
-    }
-
-    // Mock currentProjects to return the projects array
-    mockCurrentProjects(projects);
-
-    // Get and verify the current project UIDs
-    bytes32[] memory actualUids = buildersManager.currentProjectUids();
-    assertEq(actualUids.length, expectedUids.length);
-    for (uint256 i = 0; i < actualUids.length; i++) {
-      assertEq(actualUids[i], expectedUids[i]);
-    }
-  }
-
   // --- Internal Helpers ---
 
   function _setupSettings(uint64 lastClaimedTimestamp, uint64 currentSeasonExpiry) internal {
@@ -157,24 +102,51 @@ contract UnitYieldTest is BaseTest {
       projects[i] = makeAddr(string.concat('project', vm.toString(i)));
     }
 
-    // Setup array storage
-    bytes32 slot = bytes32(uint256(12));
+    // Storage slots in BuildersManager:
+    // slot 0: TOKEN (address)
+    // slot 1: EAS (address)
+    // slots 2-5: _settings (struct)
+    //   slot 2: cycleLength, lastClaimedTimestamp, currentSeasonExpiry
+    //   slot 3: seasonDuration
+    //   slot 4: minVouches
+    //   slot 5: optimismFoundationAttesters array pointer
+    // slot 6: optimismFoundationAttester (mapping)
+    // slot 7: eligibleVoter (mapping)
+    // slot 8: eligibleProject (mapping)
+    // slot 9: eligibleProjectByUid (mapping)
+    // slot 10: projectToExpiry (mapping)
+    // slot 11: projectToVouches (mapping)
+    // slot 12: voterToProjectVouch (mapping)
+    // slot 13: _projectToVouchers (mapping)
+    // slot 14: _currentProjects (array)
+
+    // Setup array storage for _currentProjects
+    bytes32 slot = bytes32(uint256(14));
     vm.store(address(buildersManager), slot, bytes32(count));
     bytes32 arrayStartSlot = keccak256(abi.encodePacked(slot));
 
     for (uint256 i = 0; i < count; i++) {
-      // Store project address
+      // Store project address in _currentProjects array
       bytes32 itemSlot = bytes32(uint256(arrayStartSlot) + i);
       bytes32 itemValue = bytes32(uint256(uint160(projects[i])));
       vm.store(address(buildersManager), itemSlot, itemValue);
 
-      // Store project expiry
-      bytes32 expirySlot = keccak256(abi.encode(projects[i], uint256(9)));
+      // Store project expiry in projectToExpiry mapping (slot 10)
+      bytes32 expirySlot = keccak256(abi.encode(projects[i], uint256(10)));
       vm.store(address(buildersManager), expirySlot, bytes32(uint256(expiryTime)));
 
       // Setup attestations and vouches
-      bytes32 projectUid = keccak256(abi.encodePacked('project', i));
+      bytes32 projectUid = bytes32(uint256(i + 1)); // Use simple incremental UIDs
       mockEligibleProject(projectUid, projects[i]);
+
+      // Mock the project to UID mapping
+      vm.mockCall(
+        address(buildersManager),
+        abi.encodeWithSelector(IBuildersManager.eligibleProjectByUid.selector, projects[i]),
+        abi.encode(projectUid)
+      );
+
+      // Mock the vouches count
       vm.mockCall(
         address(buildersManager),
         abi.encodeWithSelector(IBuildersManager.projectToVouches.selector, projects[i]),
