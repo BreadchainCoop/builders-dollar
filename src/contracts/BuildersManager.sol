@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: PPL
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
-import {BuildersDollar} from '@builders-dollar-token/BuildersDollar.sol';
 import {Attestation, EMPTY_UID} from '@eas/Common.sol';
 import {IEAS} from '@eas/IEAS.sol';
+import {BuildersDollar} from '@obs-usd-token/BuildersDollar.sol';
 import {Ownable2StepUpgradeable} from '@oz-upgradeable/access/Ownable2StepUpgradeable.sol';
 import {EIP712Upgradeable} from '@oz-upgradeable/utils/cryptography/EIP712Upgradeable.sol';
 import {IBuildersManager} from 'interfaces/IBuildersManager.sol';

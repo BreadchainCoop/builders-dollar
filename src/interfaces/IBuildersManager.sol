@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: PPL
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
-import {BuildersDollar} from '@builders-dollar-token/BuildersDollar.sol';
 import {IEAS} from '@eas/IEAS.sol';
+import {BuildersDollar} from '@obs-usd-token/BuildersDollar.sol';
 
 /**
  * @title BuildersManager Contract

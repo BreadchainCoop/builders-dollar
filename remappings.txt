@@ -3,7 +3,7 @@ halmos-cheatcodes=node_modules/halmos-cheatcodes
 
 @oz/=node_modules/@openzeppelin/contracts/
 @oz-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/
-@builders-dollar-token/=node_modules/obsUSD-token/src/
+@obs-usd-token/=node_modules/obsUSD-token/src/
 @eas/=node_modules/@ethereum-attestation-service/eas-contracts/contracts
 
 contracts/=src/contracts
