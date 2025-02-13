@@ -9,7 +9,10 @@ concurrency:
 env:
   OPTIMISM_RPC: ${{ secrets.OPTIMISM_RPC }}
   SEPOLIA_RPC: ${{ secrets.SEPOLIA_RPC }}
+  HOLSKY_RPC: ${{ secrets.HOLSKY_RPC }}
   OPTIMISM_DEPLOYER_PK: ${{ secrets.OPTIMISM_DEPLOYER_PK }}
+  SEPOLIA_DEPLOYER_PK: ${{ secrets.SEPOLIA_DEPLOYER_PK }}
+  HOLSKY_DEPLOYER_PK: ${{ secrets.HOLSKY_DEPLOYER_PK }}
 
 jobs:
   unit-tests:

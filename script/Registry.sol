@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
-// Tokens (Optimism Chain)
-address constant OPTIMISM_DAI = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
+// --- Chain IDs --- //
+uint256 constant OPTIMISM_CHAIN_ID = 10;
+uint256 constant SEPOLIA_CHAIN_ID = 11_155_111;
+uint256 constant HOLSKY_CHAIN_ID = 17_000;
+uint256 constant ANVIL_CHAIN_ID = 31_337;
 
-// Contracts (Optimism Chain)
+// --- Builders Dollar Deployment Params (Optimism Chain) --- //
+
+// EAS Contract (Optimism Chain)
 address constant OP_EAS = 0x4200000000000000000000000000000000000021;
 
 // Foundation Attesters (Optimism Chain)
@@ -21,12 +26,20 @@ bytes32 constant OP_SCHEMA_UID_1 = 0x9a85c61dc6b1897d4aabfe5aae7b2b726eb3c323f52
 bytes32 constant OP_SCHEMA_UID_2 = 0x165e2d5d7fb9ee4b309acb5b4f4cde497aa25ed52011a9217702570f4888cd1b;
 bytes32 constant OP_SCHEMA_UID_3 = 0x7ea9127e62773fc09e2cd737721a4368c478aea9cf8e5c25d7810f41538c67dc;
 
+// --- UBS-USD Token Deployment Params (Optimism Chain) --- //
+
 address constant OP_DAI = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
 address constant OP_A_DAI = 0x82E64f49Ed5EC1bC6e43DAD4FC8Af9bb3A2312EE;
 address constant OP_AAVE_V3_POOL = 0x794a61358D6845594F94dc1DB02A252b5b4814aD;
 address constant OP_AAVE_V3_INCENTIVES = 0x929EC64c34a17401F460460D4B9390518E5B473e;
 
-// --- Mock Variables for Tests --- //
+string constant OBSUSD_NAME = 'Builders Dollar';
+string constant OBSUSD_SYMBOL = 'OBSUSD';
+
+// ------------------------------- //
+// Warning:
+// Mock Variables for Anvil Tests Below
+// ------------------------------- //
 
 // Contracts (Anvil)
 address constant ANVIL_EAS = address(0x423);

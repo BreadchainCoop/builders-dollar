@@ -2,10 +2,9 @@
 pragma solidity 0.8.27;
 
 import {Test} from 'forge-std/Test.sol';
-import {Common} from 'script/Common.sol';
-import {IBuildersManager} from 'src/interfaces/IBuildersManager.sol';
+import {Deploy} from 'script/Deploy.sol';
 
-contract IntegrationBase is Common, Test {
+contract IntegrationBase is Deploy, Test {
   uint256 public constant INIT_BALANCE = 1 ether;
 
   address public user = makeAddr('user');
@@ -17,7 +16,7 @@ contract IntegrationBase is Common, Test {
     vm.createSelectFork(vm.rpcUrl('optimism'));
 
     vm.startPrank(owner);
-    buildersManager = IBuildersManager(address(_deployBuildersManager()));
+    _runDeployments();
     vm.stopPrank();
   }
 }

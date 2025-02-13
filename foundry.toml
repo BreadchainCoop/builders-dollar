@@ -35,11 +35,11 @@ src = 'src/interfaces/'
 runs = 256
 
 [rpc_endpoints]
-gnosis = 'https://rpc.gnosis.gateway.fm'
 optimism = 'https://mainnet.optimism.io'
 sepolia = 'https://rpc.sepolia.io'
+holsky = '${HOLSKY_RPC}'
 
 [etherscan]
-gnosis = { key = "${ETHERSCAN_API_KEY}" }
 optimism = { key = "${ETHERSCAN_API_KEY}" }
 sepolia = { key = "${ETHERSCAN_API_KEY}" }
+holsky = { key = "${ETHERSCAN_API_KEY}" }
