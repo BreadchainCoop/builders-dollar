@@ -32,6 +32,9 @@ contract UnitVouchingTest is BaseTest {
     vm.expectEmit(true, true, true, true);
     emit IBuildersManager.ProjectValidated(projectAttestation, project);
 
+    vm.expectEmit(true, true, true, true);
+    emit IBuildersManager.VouchRecorded(address(this), project, projectAttestation);
+
     // Vouch for project
     buildersManager.vouch(projectAttestation);
   }
@@ -49,7 +52,7 @@ contract UnitVouchingTest is BaseTest {
     _mockEASAttestation(projectAttestation, mockProjectAttestation);
 
     // Expect revert
-    vm.expectRevert(IBuildersManager.InvalidProjectAttestation.selector);
+    vm.expectRevert(IBuildersManager.InvalidProjectUid.selector);
     buildersManager.vouch(projectAttestation);
   }
 

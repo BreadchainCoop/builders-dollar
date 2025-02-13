@@ -62,6 +62,28 @@ interface IBuildersManager {
    */
   event OpFoundationAttesterUpdated(address indexed _attester, bool indexed _status);
 
+  /**
+   * @notice Emitted when a parameter is modified
+   * @param _param The parameter that was modified
+   * @param _value The new value for the parameter
+   */
+  event ParameterModified(bytes32 indexed _param, uint256 _value);
+
+  /**
+   * @notice Emitted when a vouch is recorded for a project
+   * @param _voter The address of the voter who vouched
+   * @param _project The address of the project being vouched for
+   * @param _uid The uid of the project
+   */
+  event VouchRecorded(address indexed _voter, address indexed _project, bytes32 indexed _uid);
+
+  /**
+   * @notice Emitted when a project reaches minimum vouches and is added to current projects
+   * @param _project The address of the project that reached minimum vouches
+   * @param _attestation The attestation hash of the project
+   */
+  event ProjectReachedMinVouches(address indexed _project, bytes32 indexed _attestation);
+
   /*///////////////////////////////////////////////////////////////
                             ERRORS
     //////////////////////////////////////////////////////////////*/
@@ -81,7 +103,7 @@ interface IBuildersManager {
   /// @notice Throws when the identification-attestation is invalid
   error InvalidIdAttestation();
   /// @notice Throws when the project-attestation is invalid
-  error InvalidProjectAttestation();
+  error InvalidProjectUid();
   /// @notice Throws when the array length is invalid
   error InvalidLength();
   /// @notice Throws when the bytes32 parameter is incorrect
@@ -203,11 +225,18 @@ interface IBuildersManager {
   function eligibleVoter(address _voter) external view returns (bool _isEligibleAndVouched);
 
   /**
-   * @notice Check if the project is eligible
+   * @notice Check if the project is eligible by recipient address
    * @param _uid The project UID
    * @return _project The project
    */
   function eligibleProject(bytes32 _uid) external view returns (address _project);
+
+  /**
+   * @notice Check if the project is eligible by UID
+   * @param _project The project
+   * @return _uid The project UID
+   */
+  function eligibleProjectByUid(address _project) external view returns (bytes32 _uid);
 
   /**
    * @notice Get the expiry for a project
@@ -224,6 +253,13 @@ interface IBuildersManager {
   function projectToVouches(address _project) external view returns (uint256 _totalVouches);
 
   /**
+   * @notice Get the list of vouchers for a project
+   * @param _project The project
+   * @return _vouchers The list of vouchers for the project
+   */
+  function projectToVouchers(address _project) external view returns (address[] memory _vouchers);
+
+  /**
    * @notice Check if the user has vouched for the project
    * @param _voter The voter
    * @param _attestHash The attestation hash
@@ -238,10 +274,16 @@ interface IBuildersManager {
   function settings() external view returns (BuilderManagerSettings memory __settings);
 
   /**
-   * @notice Get the current projects
+   * @notice Get the current projects that meet the minimum vouche requirement
    * @return _projects The list of current projects
    */
   function currentProjects() external view returns (address[] memory _projects);
+
+  /**
+   * @notice Get the current project UIDs that meet the minimum vouche requirement
+   * @return _uids The list of current project UIDs
+   */
+  function currentProjectUids() external view returns (bytes32[] memory _uids);
 
   /**
    * @notice Get the OP Foundation Attesters
