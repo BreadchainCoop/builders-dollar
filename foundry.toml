@@ -37,7 +37,6 @@ runs = 256
 [rpc_endpoints]
 optimism = 'https://mainnet.optimism.io'
 sepolia = 'https://rpc.sepolia.io'
-holsky = '${HOLSKY_RPC}'
 
 [etherscan]
 optimism = { key = "${ETHERSCAN_API_KEY}" }

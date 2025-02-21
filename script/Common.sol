@@ -21,8 +21,8 @@ import {
   OP_A_DAI,
   OP_DAI,
   OP_EAS,
-  OP_FOUNDATION_ATTESTER_1
-} from 'script/Registry.sol';
+  OP_FOUNDATION_ATTESTER_0
+} from 'script/Constants.sol';
 
 struct DeploymentParams {
   address token; // BuildersDollar token address
@@ -53,7 +53,7 @@ contract Common is Script {
   function setUp() public virtual {
     // Optimism Deployment Params
     address[] memory _opAttesters = new address[](1);
-    _opAttesters[0] = OP_FOUNDATION_ATTESTER_1;
+    _opAttesters[0] = OP_FOUNDATION_ATTESTER_0;
 
     _deploymentParams[OPTIMISM_CHAIN_ID] = DeploymentParams({
       token: address(obsUsdToken),

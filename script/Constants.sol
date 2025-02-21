@@ -13,18 +13,25 @@ uint256 constant ANVIL_CHAIN_ID = 31_337;
 address constant OP_EAS = 0x4200000000000000000000000000000000000021;
 
 // Foundation Attesters (Optimism Chain)
-address constant OP_FOUNDATION_ATTESTER_1 = 0xDCF7bE2ff93E1a7671724598b1526F3A33B1eC25; // gonna.eth
+address constant OP_FOUNDATION_ATTESTER_0 = 0xDCF7bE2ff93E1a7671724598b1526F3A33B1eC25; // gonna.eth
 
 // Schema #638 (Optimism Chain)
 bytes32 constant OP_SCHEMA_638 = 0x8aef6b9adab6252367588ad337f304da1c060cc3190f01d7b72c7e512b9bfb38;
 
-// First UID for Schema #638 that includes a recipient address (Optimism Chain)
-bytes32 constant OP_SCHEMA_UID_0 = 0xa5554839b21b21276b9a5c59ab950d8b56be006fdff636c0273b8bbbc3981b35;
-
 // Recent UIDs for Schema #638 (Optimism Chain)
-bytes32 constant OP_SCHEMA_UID_1 = 0x9a85c61dc6b1897d4aabfe5aae7b2b726eb3c323f52bc1d52528713ad3904257;
-bytes32 constant OP_SCHEMA_UID_2 = 0x165e2d5d7fb9ee4b309acb5b4f4cde497aa25ed52011a9217702570f4888cd1b;
-bytes32 constant OP_SCHEMA_UID_3 = 0x7ea9127e62773fc09e2cd737721a4368c478aea9cf8e5c25d7810f41538c67dc;
+bytes32 constant OP_SCHEMA_UID_638_0 = 0xa5554839b21b21276b9a5c59ab950d8b56be006fdff636c0273b8bbbc3981b35; // First UID for Schema #638 that includes a recipient address (Optimism Chain)
+bytes32 constant OP_SCHEMA_UID_638_1 = 0x9a85c61dc6b1897d4aabfe5aae7b2b726eb3c323f52bc1d52528713ad3904257;
+bytes32 constant OP_SCHEMA_UID_638_2 = 0x165e2d5d7fb9ee4b309acb5b4f4cde497aa25ed52011a9217702570f4888cd1b;
+bytes32 constant OP_SCHEMA_UID_638_3 = 0x7ea9127e62773fc09e2cd737721a4368c478aea9cf8e5c25d7810f41538c67dc;
+
+// Schema #599 (Optimism Chain)
+bytes32 constant OP_SCHEMA_599 = 0x41513aa7b99bfea09d389c74aacedaeb13c28fb748569e9e2400109cbe284ee5;
+
+// Recent UIDs for Schema #599 (Optimism Chain)
+bytes32 constant OP_SCHEMA_UID_599_0 = 0x47bce32815e138de601f34e5f4d17116fe0f22d866cc5acc271c7aabc7dcf9e9;
+bytes32 constant OP_SCHEMA_UID_599_1 = 0xabd013b11bf0ed3d9856633a89c2ea80da776ca06626cd89b66e5ce204a9928d;
+bytes32 constant OP_SCHEMA_UID_599_2 = 0xff88ab7ad81e0582bd9e5d34298f837cebcec9b8d0f03e282e899e8329027ba4;
+bytes32 constant OP_SCHEMA_UID_599_3 = 0xec6e0ca3a831031555948ddaaed5de73af707b150586ca70a5fb163e425b0227;
 
 // --- UBS-USD Token Deployment Params (Optimism Chain) --- //
 

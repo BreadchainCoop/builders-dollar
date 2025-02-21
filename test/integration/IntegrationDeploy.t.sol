@@ -3,7 +3,6 @@ pragma solidity 0.8.27;
 
 import {Ownable2StepUpgradeable} from '@oz-upgradeable/access/Ownable2StepUpgradeable.sol';
 import {Ownable} from '@oz/access/Ownable.sol';
-import {BuildersManager} from 'contracts/BuildersManager.sol';
 import {IntegrationBase} from 'test/integration/IntegrationBase.sol';
 
 contract IntegrationDeploy is IntegrationBase {

@@ -13,6 +13,12 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
   uint256 private constant _PRECISION = 1e18;
   /// @inheritdoc IBuildersManager
   bytes32 public constant OP_SCHEMA_638 = 0x8aef6b9adab6252367588ad337f304da1c060cc3190f01d7b72c7e512b9bfb38;
+  /// @inheritdoc IBuildersManager
+  bytes32 public constant OP_SCHEMA_599 = 0x41513aa7b99bfea09d389c74aacedaeb13c28fb748569e9e2400109cbe284ee5;
+  /// @notice Accepted voter type: Guest
+  bytes32 internal constant _GUEST = 'Guest';
+  /// @notice Accepted voter type: Citizen
+  bytes32 internal constant _CITIZEN = 'Citizen';
 
   // --- Registry ---
 
@@ -237,12 +243,14 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
   function _validateOptimismVoter(bytes32 _identityAttestation, address _claimer) internal returns (bool _verified) {
     if (eligibleVoter[_claimer]) revert AlreadyVerified();
     Attestation memory _attestation = EAS.getAttestation(_identityAttestation);
+    (,, string memory _voterType,,) = abi.decode(_attestation.data, (uint256, string, string, string, string));
+    bytes32 _voterTypeBytes = bytes32(bytes(_voterType));
 
     if (_attestation.uid == EMPTY_UID) return false;
-    if (!optimismFoundationAttester[_attestation.attester]) return false;
     if (_attestation.recipient != _claimer) return false;
+    if (_voterTypeBytes != _GUEST && _voterTypeBytes != _CITIZEN) return false;
 
-    _verified = true;
+    _verified = _attestation.schema == OP_SCHEMA_599;
     eligibleVoter[_claimer] = _verified;
     emit VoterValidated(_claimer, _identityAttestation);
   }
@@ -255,7 +263,6 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
   function _validateProject(bytes32 _uid) internal returns (bool _verified) {
     if (eligibleProject[_uid] != address(0)) revert AlreadyVerified();
     Attestation memory _attestation = EAS.getAttestation(_uid);
-
     (bytes32 _projectRefId,) = abi.decode(_attestation.data, (bytes32, bytes));
 
     if (_attestation.recipient == address(0)) return false;
