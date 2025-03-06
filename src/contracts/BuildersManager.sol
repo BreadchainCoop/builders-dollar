@@ -236,13 +236,13 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
 
   /**
    * @notice Internal function to validate the voucher's identity
-   * @param _identityAttestation The attestation hash of the voucher's identity
+   * @param _uid The attestation hash of the voucher's identity
    * @param _claimer The address of the voucher
    * @return _verified True if the voter is elegible
    */
-  function _validateOptimismVoter(bytes32 _identityAttestation, address _claimer) internal returns (bool _verified) {
+  function _validateOptimismVoter(bytes32 _uid, address _claimer) internal returns (bool _verified) {
     if (eligibleVoter[_claimer]) revert AlreadyVerified();
-    Attestation memory _attestation = EAS.getAttestation(_identityAttestation);
+    Attestation memory _attestation = EAS.getAttestation(_uid);
     (,, string memory _voterType,,) = abi.decode(_attestation.data, (uint256, string, string, string, string));
     bytes32 _voterTypeBytes = bytes32(bytes(_voterType));
 
@@ -252,7 +252,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
 
     _verified = _attestation.schema == OP_SCHEMA_599;
     eligibleVoter[_claimer] = _verified;
-    emit VoterValidated(_claimer, _identityAttestation);
+    emit VoterValidated(_claimer, _uid);
   }
 
   /**
