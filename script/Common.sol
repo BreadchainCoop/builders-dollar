@@ -24,6 +24,7 @@ import {
   OP_DAI,
   OP_EAS,
   OP_FOUNDATION_ATTESTER_0,
+  OP_FOUNDATION_ATTESTER_1,
   OP_SCHEMA_599,
   OP_SCHEMA_638
 } from 'script/Constants.sol';
@@ -56,8 +57,9 @@ contract Common is Script {
 
   function setUp() public virtual {
     // Optimism Deployment Params
-    address[] memory _opAttesters = new address[](1);
+    address[] memory _opAttesters = new address[](2);
     _opAttesters[0] = OP_FOUNDATION_ATTESTER_0;
+    _opAttesters[1] = OP_FOUNDATION_ATTESTER_1;
 
     _deploymentParams[OPTIMISM_CHAIN_ID] = DeploymentParams({
       token: address(obsUsdToken),

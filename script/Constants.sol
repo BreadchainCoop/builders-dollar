@@ -17,6 +17,7 @@ address constant OP_EAS = 0x4200000000000000000000000000000000000021;
 
 // Foundation Attesters (Optimism Chain)
 address constant OP_FOUNDATION_ATTESTER_0 = 0xDCF7bE2ff93E1a7671724598b1526F3A33B1eC25; // gonna.eth
+address constant OP_FOUNDATION_ATTESTER_1 = 0xE4553b743E74dA3424Ac51f8C1E586fd43aE226F;
 
 // Schema #638 (Optimism Chain)
 bytes32 constant OP_SCHEMA_638 = 0x8aef6b9adab6252367588ad337f304da1c060cc3190f01d7b72c7e512b9bfb38;

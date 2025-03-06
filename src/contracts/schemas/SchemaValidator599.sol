@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
-import {Attestation, EMPTY_UID} from '@eas/Common.sol';
+import {Attestation} from '@eas/Common.sol';
 import {SchemaValidatorBase} from 'contracts/schemas/SchemaValidatorBase.sol';
 
 contract SchemaValidator599 is SchemaValidatorBase {
@@ -19,7 +19,7 @@ contract SchemaValidator599 is SchemaValidatorBase {
     (,, string memory _voterType,,) = abi.decode(_attestation.data, (uint256, string, string, string, string));
     bytes32 _voterTypeBytes = bytes32(bytes(_voterType));
 
-    if (_attestation.uid == EMPTY_UID) return false;
+    if (!BUILDERS_MANAGER.optimismFoundationAttester(_attestation.attester)) return false;
     if (_attestation.recipient != _claimer) return false;
     if (_voterTypeBytes != _GUEST && _voterTypeBytes != _CITIZEN) return false;
 
