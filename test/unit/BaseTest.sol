@@ -2,14 +2,21 @@
 pragma solidity 0.8.27;
 
 import {Attestation, EMPTY_UID} from '@eas/Common.sol';
+import {SchemaRecord} from '@eas/ISchemaRegistry.sol';
+import {ISchemaResolver} from '@eas/resolver/ISchemaResolver.sol';
 import {TransparentUpgradeableProxy} from '@oz/proxy/transparent/TransparentUpgradeableProxy.sol';
 import {BuildersManager, IBuildersManager} from 'contracts/BuildersManager.sol';
+import {SchemaValidator599} from 'contracts/schemas/SchemaValidator599.sol';
+import {SchemaValidator638} from 'contracts/schemas/SchemaValidator638.sol';
 import {Test} from 'forge-std/Test.sol';
+import {OP_SCHEMA_599, OP_SCHEMA_638} from 'script/Constants.sol';
 
 contract BaseTest is Test {
   IBuildersManager public buildersManager;
   address public token = makeAddr('builders-dollar');
   address public eas = makeAddr('eas');
+  address public voterSchemaValidator;
+  address public projectSchemaValidator;
 
   // Test variables
   bytes32 public identityAttestation = bytes32(uint256(2));
@@ -42,11 +49,59 @@ contract BaseTest is Test {
 
     buildersManager = IBuildersManager(address(proxy));
 
+    // Mock EAS schema registry before creating schema validators
+    mockEASSchemaRegistry();
+
+    voterSchemaValidator = address(new SchemaValidator599(OP_SCHEMA_599, address(buildersManager)));
+    projectSchemaValidator = address(new SchemaValidator638(OP_SCHEMA_638, address(buildersManager)));
+    buildersManager.registerSchema(OP_SCHEMA_599, voterSchemaValidator);
+    buildersManager.registerSchema(OP_SCHEMA_638, projectSchemaValidator);
+    buildersManager.setSchemaValidator('voterSchema', OP_SCHEMA_599);
+    buildersManager.setSchemaValidator('projectSchema', OP_SCHEMA_638);
+
     // Mock initial settings
     mockSettings(_settings);
   }
 
   // --- Helper Functions ---
+
+  /**
+   * @notice Mocks the EAS.getSchemaRegistry() call to return a mock schema registry address
+   * @dev This is needed for schema validators to initialize properly in tests
+   */
+  function mockEASSchemaRegistry() public returns (address) {
+    address mockSchemaRegistry = makeAddr('schema-registry');
+    vm.label(mockSchemaRegistry, 'schema-registry');
+
+    // Mock the getSchemaRegistry call
+    vm.mockCall(eas, abi.encodeWithSignature('getSchemaRegistry()'), abi.encode(mockSchemaRegistry));
+
+    // Mock getSchema for OP_SCHEMA_599 (voter schema)
+    // Create a SchemaRecord with the correct UID
+    vm.mockCall(
+      mockSchemaRegistry,
+      abi.encodeWithSignature('getSchema(bytes32)', OP_SCHEMA_599),
+      abi.encode(
+        SchemaRecord({uid: OP_SCHEMA_599, resolver: ISchemaResolver(address(0)), revocable: true, schema: 'VoterSchema'})
+      )
+    );
+
+    // Mock getSchema for OP_SCHEMA_638 (project schema)
+    vm.mockCall(
+      mockSchemaRegistry,
+      abi.encodeWithSignature('getSchema(bytes32)', OP_SCHEMA_638),
+      abi.encode(
+        SchemaRecord({
+          uid: OP_SCHEMA_638,
+          resolver: ISchemaResolver(address(0)),
+          revocable: true,
+          schema: 'ProjectSchema'
+        })
+      )
+    );
+
+    return mockSchemaRegistry;
+  }
 
   function _createMockAttestation(
     bytes32 uid,
@@ -99,7 +154,7 @@ contract BaseTest is Test {
     bytes memory attestationData = abi.encode(projectRefId, '');
 
     Attestation memory mockAttestation =
-      _createMockAttestation(attestation, buildersManager.OP_SCHEMA_638(), project, address(this), attestationData);
+      _createMockAttestation(attestation, OP_SCHEMA_638, project, address(this), attestationData);
 
     _mockEASAttestation(attestation, mockAttestation);
     vm.mockCall(address(eas), abi.encodeWithSignature('isAttestationValid(bytes32)', projectRefId), abi.encode(true));
@@ -113,9 +168,8 @@ contract BaseTest is Test {
     bytes memory voterData = abi.encode(uint256(320_694), 'Voter', 'Guest', 'C', '3.2');
 
     // Create mock identity attestation with correct schema
-    Attestation memory mockIdentityAttestation = _createMockAttestation(
-      identityAttestation, buildersManager.OP_SCHEMA_599(), address(this), address(this), voterData
-    );
+    Attestation memory mockIdentityAttestation =
+      _createMockAttestation(identityAttestation, OP_SCHEMA_599, address(this), address(this), voterData);
 
     // Mock the EAS call for getting the attestation
     _mockEASAttestation(identityAttestation, mockIdentityAttestation);
@@ -268,9 +322,8 @@ contract BaseTest is Test {
       bytes32 _projectRefId = keccak256(abi.encodePacked('projectRef', i));
       bytes memory _attestationData = abi.encode(_projectRefId, '');
 
-      Attestation memory _projectAttestation = _createMockAttestation(
-        _projectUid, buildersManager.OP_SCHEMA_638(), _projects[i], address(this), _attestationData
-      );
+      Attestation memory _projectAttestation =
+        _createMockAttestation(_projectUid, OP_SCHEMA_638, _projects[i], address(this), _attestationData);
       _mockEASAttestation(_projectUid, _projectAttestation);
 
       // Mock project reference attestation as valid
@@ -288,7 +341,7 @@ contract BaseTest is Test {
         bytes32 _voterRefId = keccak256(abi.encodePacked('voterRef', i, j));
         bytes memory _voterData = abi.encode(_voterRefId, '');
         Attestation memory _voterAttestation =
-          _createMockAttestation(_voterUid, buildersManager.OP_SCHEMA_638(), _voter, address(this), _voterData);
+          _createMockAttestation(_voterUid, OP_SCHEMA_638, _voter, address(this), _voterData);
         _mockEASAttestation(_voterUid, _voterAttestation);
 
         // Mock voter reference attestation as valid

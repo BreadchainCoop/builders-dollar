@@ -27,14 +27,15 @@ contract SchemaValidatorBase is ISchemaValidator {
   }
 
   /// @inheritdoc ISchemaValidator
-  function validateWithSchema(bytes32, address) external virtual returns (bool _verified) {
+  function validateWithSchema(bytes32, address) external view virtual returns (bool _verified) {
     /// @dev This function needs to be defined for the interface; use override for logic implementation
     _verified = false;
   }
 
   /// @inheritdoc ISchemaValidator
-  function validateWithSchema(bytes32) external virtual returns (bool _verified) {
+  function validateWithSchema(bytes32) external view virtual returns (bool _verified, address _recipient) {
     /// @dev This function needs to be defined for the interface; use override for logic implementation
+    _recipient = address(0);
     _verified = false;
   }
 }

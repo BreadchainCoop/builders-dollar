@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
-import {BaseTest} from './BaseTest.sol';
 import {Attestation} from '@eas/Common.sol';
 import {IBuildersManager} from 'contracts/BuildersManager.sol';
+import {OP_SCHEMA_638} from 'script/Constants.sol';
+import {BaseTest} from 'test/unit/BaseTest.sol';
 
 contract UnitVouchingTest is BaseTest {
   bytes32 public projectAttestation = bytes32(uint256(1));
@@ -17,9 +18,8 @@ contract UnitVouchingTest is BaseTest {
 
     // Setup project attestation
     bytes memory attestationData = abi.encode(projectRefId, '');
-    Attestation memory mockProjectAttestation = _createMockAttestation(
-      projectAttestation, buildersManager.OP_SCHEMA_638(), project, address(this), attestationData
-    );
+    Attestation memory mockProjectAttestation =
+      _createMockAttestation(projectAttestation, OP_SCHEMA_638, project, address(this), attestationData);
     _mockEASAttestation(projectAttestation, mockProjectAttestation);
     vm.mockCall(address(eas), abi.encodeWithSignature('isAttestationValid(bytes32)', projectRefId), abi.encode(true));
 
@@ -43,9 +43,8 @@ contract UnitVouchingTest is BaseTest {
     vm.mockCall(address(eas), abi.encodeWithSignature('isAttestationValid(bytes32)', projectRefId), abi.encode(false));
 
     // Mock invalid project attestation
-    Attestation memory mockProjectAttestation = _createMockAttestation(
-      projectAttestation, buildersManager.OP_SCHEMA_638(), project, address(this), abi.encode(projectRefId, '')
-    );
+    Attestation memory mockProjectAttestation =
+      _createMockAttestation(projectAttestation, OP_SCHEMA_638, project, address(this), abi.encode(projectRefId, ''));
     _mockEASAttestation(projectAttestation, mockProjectAttestation);
 
     // Expect revert

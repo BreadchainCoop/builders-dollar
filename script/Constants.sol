@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
+// Fixed-point multiplier
+uint256 constant WAD = 1e18;
+
 // --- Chain IDs --- //
 uint256 constant OPTIMISM_CHAIN_ID = 10;
 uint256 constant SEPOLIA_CHAIN_ID = 11_155_111;

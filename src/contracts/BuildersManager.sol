@@ -1,39 +1,33 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
-import {Attestation, EMPTY_UID} from '@eas/Common.sol';
 import {IEAS} from '@eas/IEAS.sol';
 import {BuildersDollar} from '@obs-usd-token/BuildersDollar.sol';
 import {Ownable2StepUpgradeable} from '@oz-upgradeable/access/Ownable2StepUpgradeable.sol';
 import {EIP712Upgradeable} from '@oz-upgradeable/utils/cryptography/EIP712Upgradeable.sol';
 import {IBuildersManager} from 'interfaces/IBuildersManager.sol';
+import {ISchemaValidator} from 'interfaces/ISchemaValidator.sol';
+import {WAD} from 'script/Constants.sol';
 
 contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuildersManager {
-  /// @notice The mutliplier used for fixed-point division
-  uint256 private constant _PRECISION = 1e18;
-  /// @inheritdoc IBuildersManager
-  bytes32 public constant OP_SCHEMA_638 = 0x8aef6b9adab6252367588ad337f304da1c060cc3190f01d7b72c7e512b9bfb38;
-  /// @inheritdoc IBuildersManager
-  bytes32 public constant OP_SCHEMA_599 = 0x41513aa7b99bfea09d389c74aacedaeb13c28fb748569e9e2400109cbe284ee5;
-  /// @notice Accepted voter type: Guest
-  bytes32 internal constant _GUEST = 'Guest';
-  /// @notice Accepted voter type: Citizen
-  bytes32 internal constant _CITIZEN = 'Citizen';
-
-  // --- Registry ---
-
   /// @inheritdoc IBuildersManager
   // solhint-disable-next-line
   BuildersDollar public TOKEN;
   /// @inheritdoc IBuildersManager
   // solhint-disable-next-line
   IEAS public EAS;
+  /// @inheritdoc IBuildersManager
+  bytes32 public voterSchema;
+  /// @inheritdoc IBuildersManager
+  bytes32 public projectSchema;
 
   // --- Data ---
 
   /// @notice See params @IBuildersManager
   BuilderManagerSettings internal _settings;
 
+  /// @inheritdoc IBuildersManager
+  mapping(bytes32 _schemaUid => address _validator) public schemaToValidator;
   /// @inheritdoc IBuildersManager
   mapping(address _attester => bool _isEligible) public optimismFoundationAttester;
   /// @inheritdoc IBuildersManager
@@ -152,7 +146,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
 
     uint256 _yield = TOKEN.yieldAccrued();
     TOKEN.claimYield(_yield);
-    uint256 _yieldPerProject = ((_yield * _PRECISION) / _l) / _PRECISION;
+    uint256 _yieldPerProject = ((_yield * WAD) / _l) / WAD;
 
     for (uint256 _i; _i < _l; _i++) {
       TOKEN.transfer(_currentProjects[_i], _yieldPerProject);
@@ -161,9 +155,28 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
   }
 
   /// @inheritdoc IBuildersManager
+  function registerSchema(bytes32 _schemaUid, address _validator) external onlyOwner {
+    if (ISchemaValidator(_validator).SCHEMA() != _schemaUid) revert ISchemaValidator.InvalidSchema();
+    schemaToValidator[_schemaUid] = _validator;
+  }
+
+  /// @inheritdoc IBuildersManager
+  function setSchemaValidator(bytes32 _param, bytes32 _schemaUid) external onlyOwner {
+    if (_param == 'voterSchema') voterSchema = _schemaUid;
+    else if (_param == 'projectSchema') projectSchema = _schemaUid;
+    else revert InvalidParameter();
+  }
+
+  /// @inheritdoc IBuildersManager
   function modifyParams(bytes32 _param, uint256 _value) external onlyOwner {
     if (_value == 0) revert ZeroValue();
-    _modifyParams(_param, _value);
+    if (_param == 'cycleLength') _settings.cycleLength = uint64(_value);
+    else if (_param == 'currentSeasonExpiry') _settings.currentSeasonExpiry = uint64(_value);
+    else if (_param == 'seasonDuration') _settings.seasonDuration = _value;
+    else if (_param == 'minVouches') _settings.minVouches = _value;
+    else revert InvalidParameter();
+
+    emit ParameterModified(_param, _value);
   }
 
   /// @inheritdoc IBuildersManager
@@ -236,23 +249,18 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
 
   /**
    * @notice Internal function to validate the voucher's identity
-   * @param _uid The attestation hash of the voucher's identity
+   * @param _uid The attestation uid of the voucher's identity
    * @param _claimer The address of the voucher
    * @return _verified True if the voter is elegible
    */
   function _validateOptimismVoter(bytes32 _uid, address _claimer) internal returns (bool _verified) {
     if (eligibleVoter[_claimer]) revert AlreadyVerified();
-    Attestation memory _attestation = EAS.getAttestation(_uid);
-    (,, string memory _voterType,,) = abi.decode(_attestation.data, (uint256, string, string, string, string));
-    bytes32 _voterTypeBytes = bytes32(bytes(_voterType));
+    _verified = ISchemaValidator(schemaToValidator[voterSchema]).validateWithSchema(_uid, _claimer);
 
-    if (_attestation.uid == EMPTY_UID) return false;
-    if (_attestation.recipient != _claimer) return false;
-    if (_voterTypeBytes != _GUEST && _voterTypeBytes != _CITIZEN) return false;
-
-    _verified = _attestation.schema == OP_SCHEMA_599;
-    eligibleVoter[_claimer] = _verified;
-    emit VoterValidated(_claimer, _uid);
+    if (_verified) {
+      eligibleVoter[_claimer] = _verified;
+      emit VoterValidated(_claimer, _uid);
+    }
   }
 
   /**
@@ -262,17 +270,10 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
    */
   function _validateProject(bytes32 _uid) internal returns (bool _verified) {
     if (eligibleProject[_uid] != address(0)) revert AlreadyVerified();
-    Attestation memory _attestation = EAS.getAttestation(_uid);
-    (bytes32 _projectRefId,) = abi.decode(_attestation.data, (bytes32, bytes));
+    address _project;
+    (_verified, _project) = ISchemaValidator(schemaToValidator[projectSchema]).validateWithSchema(_uid);
 
-    if (_attestation.recipient == address(0)) return false;
-    if (!optimismFoundationAttester[_attestation.attester]) return false;
-    if (_attestation.time < _settings.currentSeasonExpiry - _settings.seasonDuration) return false;
-    if (!EAS.isAttestationValid(_projectRefId)) return false;
-
-    _verified = _attestation.schema == OP_SCHEMA_638;
     if (_verified) {
-      address _project = _attestation.recipient;
       eligibleProject[_uid] = _project;
       eligibleProjectByUid[_project] = _uid;
       projectToExpiry[_project] = _settings.currentSeasonExpiry;
@@ -300,22 +301,6 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
   }
 
   /**
-   * @notice See modifyParams @IBuildersManager
-   * @param _param The parameter to modify
-   * @param _value The new value
-   */
-  function _modifyParams(bytes32 _param, uint256 _value) internal {
-    if (_value == 0) revert ZeroValue();
-    if (_param == 'cycleLength') _settings.cycleLength = uint64(_value);
-    else if (_param == 'currentSeasonExpiry') _settings.currentSeasonExpiry = uint64(_value);
-    else if (_param == 'seasonDuration') _settings.seasonDuration = _value;
-    else if (_param == 'minVouches') _settings.minVouches = _value;
-    else revert InvalidParameter();
-
-    emit ParameterModified(_param, _value);
-  }
-
-  /**
    * @notice See updateOpFoundationAttester @IBuildersManager
    * @param _attester The attester address
    * @param _status The attester status
@@ -338,7 +323,6 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
         }
       }
     }
-
     emit OpFoundationAttesterUpdated(_attester, _status);
   }
 }

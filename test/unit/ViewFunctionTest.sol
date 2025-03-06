@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
-import {BaseTest} from './BaseTest.sol';
 import {IBuildersManager} from 'contracts/BuildersManager.sol';
+import {BaseTest} from 'test/unit/BaseTest.sol';
 
 contract UnitViewFunctionTest is BaseTest {
   function test_GetSettingsWhenCalled() public {
@@ -76,11 +76,6 @@ contract UnitViewFunctionTest is BaseTest {
 
     address actualProject = buildersManager.eligibleProject(projectAttestation);
     assertEq(actualProject, expectedProject);
-  }
-
-  function test_GetOpSchema638WhenCalled() public view {
-    bytes32 expectedSchema = 0x8aef6b9adab6252367588ad337f304da1c060cc3190f01d7b72c7e512b9bfb38;
-    assertEq(buildersManager.OP_SCHEMA_638(), expectedSchema);
   }
 
   function test_GetEligibleProjectByUidWhenCalled() public {

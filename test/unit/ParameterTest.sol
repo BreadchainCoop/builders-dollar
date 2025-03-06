@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
-import {BaseTest} from './BaseTest.sol';
 import {Ownable} from '@oz/access/Ownable.sol';
 import {IBuildersManager} from 'contracts/BuildersManager.sol';
+import {BaseTest} from 'test/unit/BaseTest.sol';
 
 contract UnitParameterTest is BaseTest {
   bytes32 public constant CYCLE_LENGTH = 'cycleLength';

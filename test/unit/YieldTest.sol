@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
-import {BaseTest} from './BaseTest.sol';
 import {IBuildersManager} from 'contracts/BuildersManager.sol';
+import {BaseTest} from 'test/unit/BaseTest.sol';
 
 contract UnitYieldTest is BaseTest {
   uint256 public constant CURRENT_TIME = 1000 days;
@@ -89,7 +89,7 @@ contract UnitYieldTest is BaseTest {
     mockSettings(_settings);
 
     // Set lastClaimedTimestamp directly in storage
-    bytes32 _settingsSlot = bytes32(uint256(2));
+    bytes32 _settingsSlot = bytes32(uint256(4));
     bytes32 _currentValue = vm.load(address(buildersManager), _settingsSlot);
     bytes32 _clearedValue = bytes32(uint256(_currentValue) & 0xFFFFFFFFFFFFFFFF);
     bytes32 _newValue = bytes32(uint256(_clearedValue) | (uint256(_lastClaimedTimestamp) << 64));
@@ -101,20 +101,23 @@ contract UnitYieldTest is BaseTest {
    * Storage slots in BuildersManager:
    * slot 0: TOKEN (address)
    * slot 1: EAS (address)
-   * slots 2-5: _settings (struct)
-   *   slot 2: cycleLength, lastClaimedTimestamp, currentSeasonExpiry
-   *   slot 3: seasonDuration
-   *   slot 4: minVouches
-   *   slot 5: optimismFoundationAttesters array pointer
-   * slot 6: optimismFoundationAttester (mapping)
-   * slot 7: eligibleVoter (mapping)
-   * slot 8: eligibleProject (mapping)
-   * slot 9: eligibleProjectByUid (mapping)
-   * slot 10: projectToExpiry (mapping)
-   * slot 11: projectToVouches (mapping)
-   * slot 12: voterToProjectVouch (mapping)
-   * slot 13: _projectToVouchers (mapping)
-   * slot 14: _currentProjects (array)
+   * slot 2: voterSchema (bytes32)
+   * slot 3: projectSchema (bytes32)
+   * slots 4-7: _settings (struct)
+   *   slot 4: cycleLength, lastClaimedTimestamp, currentSeasonExpiry
+   *   slot 5: seasonDuration
+   *   slot 6: minVouches
+   *   slot 7: optimismFoundationAttesters array pointer
+   * slot 8: schemaToValidator (mapping)
+   * slot 9: optimismFoundationAttester (mapping)
+   * slot 10: eligibleVoter (mapping)
+   * slot 11: eligibleProject (mapping)
+   * slot 12: eligibleProjectByUid (mapping)
+   * slot 13: projectToExpiry (mapping)
+   * slot 14: projectToVouches (mapping)
+   * slot 15: voterToProjectVouch (mapping)
+   * slot 16: _projectToVouchers (mapping)
+   * slot 17: _currentProjects (array)
    */
   function _setupProjects(uint256 _count, uint256 _expiryTime) internal returns (address[] memory _projects) {
     _projects = new address[](_count);
@@ -123,7 +126,7 @@ contract UnitYieldTest is BaseTest {
     }
 
     // Setup array storage for _currentProjects
-    bytes32 _slot = bytes32(uint256(14));
+    bytes32 _slot = bytes32(uint256(17));
     vm.store(address(buildersManager), _slot, bytes32(_count));
     bytes32 _arrayStartSlot = keccak256(abi.encodePacked(_slot));
 
@@ -133,8 +136,8 @@ contract UnitYieldTest is BaseTest {
       bytes32 _itemValue = bytes32(uint256(uint160(_projects[i])));
       vm.store(address(buildersManager), _itemSlot, _itemValue);
 
-      // Store project expiry in projectToExpiry mapping (slot 10)
-      bytes32 _expirySlot = keccak256(abi.encode(_projects[i], uint256(10)));
+      // Store project expiry in projectToExpiry mapping (slot 13)
+      bytes32 _expirySlot = keccak256(abi.encode(_projects[i], uint256(13)));
       vm.store(address(buildersManager), _expirySlot, bytes32(uint256(_expiryTime)));
 
       // Setup attestations and vouches

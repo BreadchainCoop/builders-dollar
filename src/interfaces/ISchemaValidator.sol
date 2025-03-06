@@ -32,7 +32,7 @@ interface ISchemaValidator {
    * @param _uid The uid of the attestation
    * @return _verified True if the project is verified
    */
-  function validateWithSchema(bytes32 _uid) external returns (bool _verified);
+  function validateWithSchema(bytes32 _uid) external returns (bool _verified, address _recipient);
 
   /*///////////////////////////////////////////////////////////////
                             VIEW
