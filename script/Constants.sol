@@ -43,7 +43,10 @@ address constant OP_AAVE_V3_INCENTIVES = 0x929EC64c34a17401F460460D4B9390518E5B4
 string constant OBSUSD_NAME = 'Builders Dollar';
 string constant OBSUSD_SYMBOL = 'OBSUSD';
 
-// ------------------------------- //
+// --- Aave V2 (Optimism Chain) --- //
+address constant OP_WETH_GATEWAY = 0x86b4D2636EC473AC4A5dD83Fc2BEDa98845249A7;
+
+// ------------------------------- /
 // Warning:
 // Mock Variables for Anvil Tests Below
 // ------------------------------- //
@@ -54,9 +57,9 @@ address constant ANVIL_EAS_SCHEMA_REGISTRY = 0xaAcEdAeb13C28FB748569E9e2400109cb
 address constant ANVIL_BUILDERS_DOLLAR = address(0x425);
 
 // Foundation Attesters (Anvil)
-address constant ANVIL_FOUNDATION_ATTESTER_1 = 0x8Bc704386DCE0C4f004194684AdC44Edf6e85f07;
-address constant ANVIL_FOUNDATION_ATTESTER_2 = 0xE4553b743E74dA3424Ac51f8C1E586fd43aE226F;
-address constant ANVIL_FOUNDATION_ATTESTER_3 = 0xfC851dDCd27653Ff63889b4Cb494720521520958;
+address constant ANVIL_FOUNDATION_ATTESTER_0 = 0x8Bc704386DCE0C4f004194684AdC44Edf6e85f07;
+address constant ANVIL_FOUNDATION_ATTESTER_1 = 0xE4553b743E74dA3424Ac51f8C1E586fd43aE226F;
+address constant ANVIL_FOUNDATION_ATTESTER_2 = 0xfC851dDCd27653Ff63889b4Cb494720521520958;
 
-address constant ANVIL_VOTER_1 = 0x5C30F1273158318D3DC8FFCf991421f69fD3B77d;
-address constant ANVIL_VOTER_2 = address(0x426);
+address constant ANVIL_VOTER_0 = 0x5C30F1273158318D3DC8FFCf991421f69fD3B77d;
+address constant ANVIL_VOTER_1 = address(0x426);

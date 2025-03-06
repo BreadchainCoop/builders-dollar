@@ -10,9 +10,9 @@ import {
   ANVIL_BUILDERS_DOLLAR,
   ANVIL_CHAIN_ID,
   ANVIL_EAS,
+  ANVIL_FOUNDATION_ATTESTER_0,
   ANVIL_FOUNDATION_ATTESTER_1,
   ANVIL_FOUNDATION_ATTESTER_2,
-  ANVIL_FOUNDATION_ATTESTER_3,
   OBSUSD_NAME,
   OBSUSD_SYMBOL,
   OPTIMISM_CHAIN_ID,
@@ -72,9 +72,9 @@ contract Common is Script {
 
     // Anvil Deployment Params
     address[] memory _anvilAttesters = new address[](3);
-    _anvilAttesters[0] = ANVIL_FOUNDATION_ATTESTER_1;
-    _anvilAttesters[1] = ANVIL_FOUNDATION_ATTESTER_2;
-    _anvilAttesters[2] = ANVIL_FOUNDATION_ATTESTER_3;
+    _anvilAttesters[0] = ANVIL_FOUNDATION_ATTESTER_0;
+    _anvilAttesters[1] = ANVIL_FOUNDATION_ATTESTER_1;
+    _anvilAttesters[2] = ANVIL_FOUNDATION_ATTESTER_2;
 
     _deploymentParams[ANVIL_CHAIN_ID] = DeploymentParams({
       token: ANVIL_BUILDERS_DOLLAR,

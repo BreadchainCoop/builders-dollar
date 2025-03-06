@@ -5,6 +5,8 @@ halmos-cheatcodes=node_modules/halmos-cheatcodes
 @oz-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/
 @obs-usd-token/=node_modules/obsUSD-token/src/
 @eas/=node_modules/@ethereum-attestation-service/eas-contracts/contracts
+@aave-core-v3/=node_modules/@aave/core-v3/contracts
+@aave-core-v2/=node_modules/@aave/protocol-v2/contracts
 
 contracts/=src/contracts
 interfaces/=src/interfaces

@@ -34,6 +34,7 @@
     "package.json": "sort-package-json"
   },
   "dependencies": {
+    "@aave/core-v3": "aave/aave-v3-core",
     "@ethereum-attestation-service/eas-contracts": "ethereum-attestation-service/eas-contracts",
     "@openzeppelin/contracts": "^5.1.0",
     "@openzeppelin/contracts-upgradeable": "^5.1.0",

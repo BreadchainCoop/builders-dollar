@@ -36,5 +36,10 @@ contract IntegrationBase is Deploy, Test {
     vm.stopPrank();
 
     eas = buildersManager.EAS();
+
+    vm.label(address(buildersManager), 'BUILDERS_MANAGER');
+    vm.label(address(obsUsdToken), 'OBS_USD_TOKEN');
+    vm.label(address(eas), 'EAS');
+    vm.label(owner, 'OWNER');
   }
 }

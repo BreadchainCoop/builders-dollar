@@ -35,7 +35,7 @@ src = 'src/interfaces/'
 runs = 256
 
 [rpc_endpoints]
-optimism = 'https://mainnet.optimism.io'
+optimism = "${OPTIMISM_RPC}"
 sepolia = 'https://rpc.sepolia.io'
 
 [etherscan]
