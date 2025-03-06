@@ -162,6 +162,20 @@ interface IBuildersManager {
   function distributeYield() external;
 
   /**
+   * @notice Register a schema
+   * @param _schemaUid The schema UID
+   * @param _validator The validator contract that implements ISchemaValidator
+   */
+  function registerSchema(bytes32 _schemaUid, address _validator) external;
+
+  /**
+   * @notice Set the schema validator
+   * @param _param The parameter to set
+   * @param _schemaUid The schema UID
+   */
+  function setSchemaValidator(bytes32 _param, bytes32 _schemaUid) external;
+
+  /**
    * @notice Modify the BuilderManager parameters
    * @dev Access Control: onlyOwner
    * @param _param The parameter to modify
@@ -189,18 +203,6 @@ interface IBuildersManager {
                             VIEW
     //////////////////////////////////////////////////////////////*/
   /**
-   * @notice Get the OP_SCHEMA_638
-   * @return _opSchema638 The schema for the project attestations
-   */
-  function OP_SCHEMA_638() external view returns (bytes32 _opSchema638);
-
-  /**
-   * @notice Get the OP_SCHEMA_599
-   * @return _opSchema599 The schema for the voter attestations
-   */
-  function OP_SCHEMA_599() external view returns (bytes32 _opSchema599);
-
-  /**
    * @notice Get the Builder's Dollar Token
    * @dev This variable functionally-immutable and set during intialization
    * @return _builderToken The Builder Token
@@ -215,6 +217,25 @@ interface IBuildersManager {
    */
   // solhint-disable-next-line func-name-mixedcase
   function EAS() external view returns (IEAS _eas);
+
+  /**
+   * @notice Get the currentvoter schema
+   * @return _voterSchema The voter schema
+   */
+  function voterSchema() external view returns (bytes32 _voterSchema);
+
+  /**
+   * @notice Get the current project schema
+   * @return _projectSchema The project schema
+   */
+  function projectSchema() external view returns (bytes32 _projectSchema);
+
+  /**
+   * @notice Get the validator for a schema
+   * @param _schemaUid The schema UID
+   * @return _validator The validator
+   */
+  function schemaToValidator(bytes32 _schemaUid) external view returns (address _validator);
 
   /**
    * @notice Check if the attester is an Optimism Foundation Attester

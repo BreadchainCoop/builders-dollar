@@ -5,6 +5,8 @@ import {BuildersDollar} from '@obs-usd-token/BuildersDollar.sol';
 import {EIP173ProxyWithReceive} from '@obs-usd-token/vendor/EIP173ProxyWithReceive.sol';
 import {TransparentUpgradeableProxy} from '@oz/proxy/transparent/TransparentUpgradeableProxy.sol';
 import {BuildersManager, IBuildersManager} from 'contracts/BuildersManager.sol';
+import {SchemaValidator599} from 'contracts/schemas/SchemaValidator599.sol';
+import {SchemaValidator638} from 'contracts/schemas/SchemaValidator638.sol';
 import {Script} from 'forge-std/Script.sol';
 import {
   ANVIL_BUILDERS_DOLLAR,
@@ -21,7 +23,10 @@ import {
   OP_A_DAI,
   OP_DAI,
   OP_EAS,
-  OP_FOUNDATION_ATTESTER_0
+  OP_FOUNDATION_ATTESTER_0,
+  OP_FOUNDATION_ATTESTER_1,
+  OP_SCHEMA_599,
+  OP_SCHEMA_638
 } from 'script/Constants.sol';
 
 struct DeploymentParams {
@@ -52,8 +57,9 @@ contract Common is Script {
 
   function setUp() public virtual {
     // Optimism Deployment Params
-    address[] memory _opAttesters = new address[](1);
+    address[] memory _opAttesters = new address[](2);
     _opAttesters[0] = OP_FOUNDATION_ATTESTER_0;
+    _opAttesters[1] = OP_FOUNDATION_ATTESTER_1;
 
     _deploymentParams[OPTIMISM_CHAIN_ID] = DeploymentParams({
       token: address(obsUsdToken),
@@ -96,6 +102,7 @@ contract Common is Script {
     obsUsdToken = BuildersDollar(_deployBuildersDollar());
     _deploymentParams[block.chainid].token = address(obsUsdToken);
     buildersManager = IBuildersManager(_deployBuildersManager());
+    _setupSchemaValidators();
   }
 
   function _deployBuildersManager() internal returns (address _buildersManagerProxy) {
@@ -122,5 +129,20 @@ contract Common is Script {
         abi.encodeWithSelector(BuildersDollar.initialize.selector, OBSUSD_NAME, OBSUSD_SYMBOL)
       )
     );
+  }
+
+  function _setupSchemaValidators() internal {
+    buildersManager.registerSchema(OP_SCHEMA_599, _deploySchemaValidator599());
+    buildersManager.registerSchema(OP_SCHEMA_638, _deploySchemaValidator638());
+    buildersManager.setSchemaValidator('voterSchema', OP_SCHEMA_599);
+    buildersManager.setSchemaValidator('projectSchema', OP_SCHEMA_638);
+  }
+
+  function _deploySchemaValidator599() internal returns (address _schemaValidatorProxy) {
+    _schemaValidatorProxy = address(new SchemaValidator599(OP_SCHEMA_599, address(buildersManager)));
+  }
+
+  function _deploySchemaValidator638() internal returns (address _schemaValidatorProxy) {
+    _schemaValidatorProxy = address(new SchemaValidator638(OP_SCHEMA_638, address(buildersManager)));
   }
 }
