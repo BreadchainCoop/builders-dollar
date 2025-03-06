@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
 import {Attestation, EMPTY_UID} from '@eas/Common.sol';
@@ -349,11 +349,13 @@ contract UnitBuildersManager is Test {
     // Mock isAttestationValid call for the project reference ID
     vm.mockCall(address(eas), abi.encodeWithSignature('isAttestationValid(bytes32)', projectRefId), abi.encode(true));
 
+    bytes memory identityData = abi.encode(320_694, '7', 'Citizen', 'C', '3.2');
+
     // First make ourselves an eligible voter
     bytes32 identityAttestation = bytes32(uint256(3));
     Attestation memory mockIdentityAttestation = Attestation({
       uid: identityAttestation,
-      schema: bytes32(0),
+      schema: buildersManager.OP_SCHEMA_599(),
       time: uint64(block.timestamp),
       expirationTime: uint64(block.timestamp + 365 days),
       revocationTime: uint64(0),
@@ -361,7 +363,7 @@ contract UnitBuildersManager is Test {
       recipient: address(this),
       attester: address(this),
       revocable: true,
-      data: ''
+      data: identityData
     });
 
     vm.mockCall(
@@ -453,15 +455,6 @@ contract UnitBuildersManager is Test {
         abi.encode(true)
       );
     }
-  }
-
-  function _makeVoterEligible(address voter, bytes32 identityAttestation) internal {
-    Attestation memory mockIdentityAttestation =
-      _createMockAttestation(identityAttestation, bytes32(0), voter, address(this), '');
-    _mockEASAttestation(identityAttestation, mockIdentityAttestation);
-
-    vm.prank(voter);
-    buildersManager.validateOptimismVoter(identityAttestation);
   }
 
   function _setupProjectAttestation(

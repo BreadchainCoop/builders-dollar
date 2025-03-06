@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: PPL
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
-import {BuildersDollar} from '@builders-dollar-token/BuildersDollar.sol';
 import {IEAS} from '@eas/IEAS.sol';
+import {BuildersDollar} from '@obs-usd-token/BuildersDollar.sol';
 
 /**
  * @title BuildersManager Contract
@@ -30,6 +30,7 @@ interface IBuildersManager {
     uint256 minVouches;
     address[] optimismFoundationAttesters;
   }
+
   /*///////////////////////////////////////////////////////////////
                             EVENTS
     //////////////////////////////////////////////////////////////*/
@@ -38,7 +39,6 @@ interface IBuildersManager {
    * @param _approvalAttestation The attestation hash
    * @param _recipient The recipient of the project
    */
-
   event ProjectValidated(bytes32 indexed _approvalAttestation, address indexed _recipient);
 
   /**
@@ -193,6 +193,12 @@ interface IBuildersManager {
    * @return _opSchema638 The schema for the project attestations
    */
   function OP_SCHEMA_638() external view returns (bytes32 _opSchema638);
+
+  /**
+   * @notice Get the OP_SCHEMA_599
+   * @return _opSchema599 The schema for the voter attestations
+   */
+  function OP_SCHEMA_599() external view returns (bytes32 _opSchema599);
 
   /**
    * @notice Get the Builder's Dollar Token

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
 import {BaseTest} from './BaseTest.sol';
@@ -7,18 +7,13 @@ import {IBuildersManager} from 'contracts/BuildersManager.sol';
 
 contract UnitVouchingTest is BaseTest {
   bytes32 public projectAttestation = bytes32(uint256(1));
-  bytes32 public identityAttestation = bytes32(uint256(2));
   bytes32 public projectRefId = bytes32(uint256(3));
   address public project = address(0x123);
 
   function test_VouchWhenProjectAndIdentityAttestationsAreValid() public {
-    // Setup identity attestation
-    Attestation memory mockIdentityAttestation =
-      _createMockAttestation(identityAttestation, bytes32(0), address(this), address(this), '');
-    _mockEASAttestation(identityAttestation, mockIdentityAttestation);
-
-    // Make voter eligible
-    _makeVoterEligible(address(this), identityAttestation);
+    // Setup voter attestation
+    _setupVoterAttestation();
+    buildersManager.validateOptimismVoter(identityAttestation);
 
     // Setup project attestation
     bytes memory attestationData = abi.encode(projectRefId, '');
@@ -40,11 +35,13 @@ contract UnitVouchingTest is BaseTest {
   }
 
   function test_VouchWhenProjectAttestationIsInvalid() public {
+    // Setup voter attestation
+    _setupVoterAttestation();
+    buildersManager.validateOptimismVoter(identityAttestation);
+
     // Setup invalid project attestation
     vm.mockCall(address(eas), abi.encodeWithSignature('isAttestationValid(bytes32)', projectRefId), abi.encode(false));
 
-    // Make voter eligible
-    _makeVoterEligible(address(this), identityAttestation);
     // Mock invalid project attestation
     Attestation memory mockProjectAttestation = _createMockAttestation(
       projectAttestation, buildersManager.OP_SCHEMA_638(), project, address(this), abi.encode(projectRefId, '')
@@ -69,8 +66,11 @@ contract UnitVouchingTest is BaseTest {
     // Setup project attestation
     _setupProjectAttestation(project, projectAttestation, projectRefId);
 
-    // Make voter eligible
-    _makeVoterEligible(address(this), identityAttestation);
+    // Setup voter attestation
+    _setupVoterAttestation();
+
+    // Validate voter
+    buildersManager.validateOptimismVoter(identityAttestation);
 
     // First vouch should succeed
     buildersManager.vouch(projectAttestation);

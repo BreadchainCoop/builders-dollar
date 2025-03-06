@@ -1,23 +1,22 @@
-// SPDX-License-Identifier: PPL
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
+import {Ownable2StepUpgradeable} from '@oz-upgradeable/access/Ownable2StepUpgradeable.sol';
 import {Ownable} from '@oz/access/Ownable.sol';
-import {Test} from 'forge-std/Test.sol';
-import {Deploy} from 'script/Deploy.sol';
+import {IntegrationBase} from 'test/integration/IntegrationBase.sol';
 
-contract IntegrationDeploy is Deploy, Test {
-  function setUp() public override {
-    super.setUp();
-
-    deployer = address(0x420);
-    vm.startPrank(deployer);
-    buildersManager = _deployBuildersManager();
-    vm.stopPrank();
+contract IntegrationDeploy is IntegrationBase {
+  function test_OBSUSD_Bytecode() public view {
+    assertGt(address(obsUsdToken).code.length, 0);
   }
 
-  function test_DeployContracts() public view {
-    assertNotEq(address(buildersManager), address(0));
+  function test_BuildersManager_Bytecode() public view {
+    assertGt(address(buildersManager).code.length, 0);
+  }
+
+  function test_Ownable() public view {
+    assertEq(Ownable(address(obsUsdToken)).owner(), deployer);
     assertEq(Ownable(address(buildersManager)).owner(), deployer);
-    assertNotEq(deployer, address(0));
+    assertEq(Ownable2StepUpgradeable(address(buildersManager)).pendingOwner(), address(0));
   }
 }
