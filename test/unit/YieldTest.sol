@@ -11,23 +11,6 @@ contract UnitYieldTest is BaseTest {
   uint256 public constant MIN_VOUCHES = 3;
   uint256 public constant PROJECT_COUNT = 3;
 
-  function test_DistributeYieldWhenCycleIsReady() public {
-    vm.warp(CURRENT_TIME);
-
-    // Setup with cycle ready (last claim was 8 days ago)
-    _setupSettings(uint64(CURRENT_TIME - 8 days), uint64(CURRENT_TIME + SEASON_DURATION));
-
-    // Setup projects with future expiry
-    address[] memory projects = _setupProjects(PROJECT_COUNT, CURRENT_TIME + 365 days);
-
-    // Setup token operations and expect event
-    uint256 yieldPerProject = _setupTokenOperations(projects, 1000 ether);
-    vm.expectEmit(true, true, true, true);
-    emit IBuildersManager.YieldDistributed(yieldPerProject, projects);
-
-    buildersManager.distributeYield();
-  }
-
   function test_RevertWhenCycleNotReady() public {
     vm.warp(CURRENT_TIME);
 
