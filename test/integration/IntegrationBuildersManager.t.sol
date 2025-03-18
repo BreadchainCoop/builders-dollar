@@ -61,6 +61,9 @@ contract IntegrationBuildersManager is IntegrationBase {
     // Get the deployed contracts
     aDAI = ERC20(OP_A_DAI);
 
+    vm.label(address(aDAI), 'A_DAI');
+    vm.label(address(pool), 'POOL');
+    vm.label(address(wethGateway), 'WETH_GATEWAY');
     // Get real attestations from EAS
     projectAtt = eas.getAttestation(OP_SCHEMA_UID_638_0);
     identityAtt0 = eas.getAttestation(OP_SCHEMA_UID_599_0);
@@ -180,6 +183,7 @@ contract IntegrationBuildersManager is IntegrationBase {
 
     // First get some DAI for the owner and mint obsUSD to generate yield on
     address daiWhale = makeAddr('daiWhale');
+    vm.label(daiWhale, 'DAI_WHALE');
     vm.deal(daiWhale, 100 ether);
     vm.startPrank(daiWhale);
     wethGateway.depositETH{value: 100 ether}(OP_AAVE_V3_POOL, daiWhale, 0);
@@ -218,16 +222,10 @@ contract IntegrationBuildersManager is IntegrationBase {
     uint256 yieldAccrued = obsUsdToken.yieldAccrued();
     assertTrue(yieldAccrued > 0, 'No yield accrued');
 
-    // Mock the rewards claim to avoid array out-of-bounds error
-    vm.mockCall(address(obsUsdToken), abi.encodeWithSelector(obsUsdToken.claimRewards.selector), abi.encode());
-
     // Deal some DAI to obsUsdToken to simulate yield
     vm.startPrank(address(pool));
     deal(address(ERC20(OP_DAI)), address(obsUsdToken), yieldAccrued);
     vm.stopPrank();
-
-    // Deal obsUSD tokens to BuildersManager to enable distribution
-    deal(address(obsUsdToken), address(buildersManager), yieldAccrued);
 
     // Distribute yield
     vm.prank(owner);

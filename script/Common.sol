@@ -15,6 +15,7 @@ import {
   ANVIL_FOUNDATION_ATTESTER_0,
   ANVIL_FOUNDATION_ATTESTER_1,
   ANVIL_FOUNDATION_ATTESTER_2,
+  BREAD_COOP,
   OBSUSD_NAME,
   OBSUSD_SYMBOL,
   OPTIMISM_CHAIN_ID,
@@ -103,6 +104,7 @@ contract Common is Script {
     _deploymentParams[block.chainid].token = address(obsUsdToken);
     buildersManager = IBuildersManager(_deployBuildersManager());
     _setupSchemaValidators();
+    _setYieldClaimer();
   }
 
   function _deployBuildersManager() internal returns (address _buildersManagerProxy) {
@@ -120,15 +122,28 @@ contract Common is Script {
   }
 
   function _deployBuildersDollar() internal returns (address _obsUsdTokenProxy) {
-    address _implementation = address(new BuildersDollar(OP_DAI, OP_A_DAI, OP_AAVE_V3_POOL, OP_AAVE_V3_INCENTIVES));
+    address _implementation = address(new BuildersDollar());
 
     _obsUsdTokenProxy = address(
       new EIP173ProxyWithReceive(
         _implementation,
         deployer,
-        abi.encodeWithSelector(BuildersDollar.initialize.selector, OBSUSD_NAME, OBSUSD_SYMBOL)
+        abi.encodeWithSelector(
+          BuildersDollar.initialize.selector,
+          BREAD_COOP,
+          OP_DAI,
+          OP_A_DAI,
+          OP_AAVE_V3_POOL,
+          OP_AAVE_V3_INCENTIVES,
+          OBSUSD_NAME,
+          OBSUSD_SYMBOL
+        )
       )
     );
+  }
+
+  function _setYieldClaimer() internal {
+    obsUsdToken.setYieldClaimer(address(buildersManager));
   }
 
   function _setupSchemaValidators() internal {

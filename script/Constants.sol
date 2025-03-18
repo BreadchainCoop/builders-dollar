@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
+// Tribute of 10% to Bread Coop
+address constant BREAD_COOP = 0x918dEf5d593F46735f74F9E2B280Fe51AF3A99ad;
+
 // Fixed-point multiplier
 uint256 constant WAD = 1e18;
 
