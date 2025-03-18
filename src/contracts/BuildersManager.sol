@@ -146,10 +146,10 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
 
     uint256 _yield = TOKEN.yieldAccrued();
     TOKEN.claimYield(_yield);
-    uint256 _yieldPerProject = ((_yield * WAD) / _l) / WAD;
+    uint256 _yieldPerProject = (((_yield * 90 / 100) * WAD) / _l) / WAD;
 
     for (uint256 _i; _i < _l; _i++) {
-      TOKEN.transfer(_currentProjects[_i], _yieldPerProject);
+      TOKEN.TOKEN().transfer(_currentProjects[_i], _yieldPerProject);
     }
     emit YieldDistributed(_yieldPerProject, _currentProjects);
   }

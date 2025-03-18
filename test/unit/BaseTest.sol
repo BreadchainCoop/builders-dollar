@@ -138,6 +138,8 @@ contract BaseTest is Test {
     // Mock transfers
     uint256 amountPerRecipient = yieldAmount / recipients.length;
     for (uint256 i = 0; i < recipients.length; i++) {
+      // Mock BuildersDollar.TOKEN() call
+      vm.mockCall(address(token), abi.encodeWithSignature('TOKEN()'), abi.encode(token));
       vm.mockCall(
         address(token),
         abi.encodeWithSignature('transfer(address,uint256)', recipients[i], amountPerRecipient),
