@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
-// Tribute of 10% to Bread Coop
-address constant BREAD_COOP = 0x918dEf5d593F46735f74F9E2B280Fe51AF3A99ad;
-
 // Fixed-point multiplier
 uint256 constant WAD = 1e18;
 
@@ -14,6 +11,16 @@ uint256 constant HOLSKY_CHAIN_ID = 17_000;
 uint256 constant ANVIL_CHAIN_ID = 31_337;
 
 // --- Builders Dollar Deployment Params (Optimism Chain) --- //
+
+// Builders Dollar Settings
+uint256 constant OP_CYCLE_LENGTH = 30 days; // 1 month
+uint256 constant OP_FUNDING_EXPIRY = 304 days; // 10 months
+uint256 constant OP_SEASON_START = 1_704_067_200; // January 1, 2025 UTC
+uint256 constant OP_SEASON_DURATION = 365 days; // 1 year
+uint256 constant OP_MIN_VOUCHES = 3;
+
+// Tribute of 10% to Bread Coop
+address constant OP_BREAD_COOP = 0x918dEf5d593F46735f74F9E2B280Fe51AF3A99ad;
 
 // EAS Contract (Optimism Chain)
 address constant OP_EAS = 0x4200000000000000000000000000000000000021;
@@ -44,6 +51,8 @@ bytes32 constant OP_SCHEMA_UID_599_3 = 0xec6e0ca3a831031555948ddaaed5de73af707b1
 
 address constant OP_DAI = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
 address constant OP_A_DAI = 0x82E64f49Ed5EC1bC6e43DAD4FC8Af9bb3A2312EE;
+// address constant OP_DAI = 0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85; // USDC
+// address constant OP_A_DAI = 0x625E7708f30cA75bfd92586e17077590C60eb4cD; // aUSDC
 address constant OP_AAVE_V3_POOL = 0x794a61358D6845594F94dc1DB02A252b5b4814aD;
 address constant OP_AAVE_V3_INCENTIVES = 0x929EC64c34a17401F460460D4B9390518E5B473e;
 

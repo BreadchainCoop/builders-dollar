@@ -17,7 +17,8 @@ interface IBuildersManager {
    * @notice Builder Manager settings
    * @param cycleLength The yield distribution cycle length
    * @param lastClaimedTimestamp The timestamp for the last time yield was claimed
-   * @param currentSeasonExpiry The timestamp for the current season expiry
+   * @param fundingExpiry The amount of time a project can be funded from the timestamp of validation
+   * @param seasonStart The timestamp for the season expiry
    * @param seasonDuration The duration of a season
    * @param minVouches The minimum number of vouches required for a project to receive yield
    * @param optimismFoundationAttesters The list of attesting addresses for the OP Foundation
@@ -25,8 +26,9 @@ interface IBuildersManager {
   struct BuilderManagerSettings {
     uint64 cycleLength;
     uint64 lastClaimedTimestamp;
-    uint64 currentSeasonExpiry;
-    uint256 seasonDuration;
+    uint64 fundingExpiry;
+    uint64 seasonStart;
+    uint64 seasonDuration;
     uint256 minVouches;
     address[] optimismFoundationAttesters;
   }
