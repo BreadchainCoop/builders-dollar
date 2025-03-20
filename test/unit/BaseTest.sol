@@ -31,10 +31,11 @@ contract BaseTest is Test {
 
     // Initialize with required parameters
     IBuildersManager.BuilderManagerSettings memory _settings = IBuildersManager.BuilderManagerSettings({
-      cycleLength: 7 days,
+      cycleLength: 30 days,
       lastClaimedTimestamp: uint64(block.timestamp),
-      currentSeasonExpiry: uint64(block.timestamp + 90 days),
-      seasonDuration: 90 days,
+      fundingExpiry: uint64(304 days),
+      seasonStart: uint64(1_704_067_200),
+      seasonDuration: uint64(365 days),
       minVouches: 3,
       optimismFoundationAttesters: new address[](1)
     });

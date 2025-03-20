@@ -18,7 +18,8 @@ contract SchemaValidator638 is SchemaValidatorBase {
 
     if (_recipient == address(0)) return (false, _recipient);
     if (!BUILDERS_MANAGER.optimismFoundationAttester(_attestation.attester)) return (false, _recipient);
-    if (_attestation.time < _settings.currentSeasonExpiry - _settings.seasonDuration) return (false, _recipient);
+    if (_attestation.time < _settings.seasonStart) return (false, _recipient);
+    if (_attestation.time > _settings.seasonStart + _settings.seasonDuration) return (false, _recipient);
     if (!EAS.isAttestationValid(_projectRefId)) return (false, _recipient);
 
     _verified = true;

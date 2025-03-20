@@ -15,19 +15,24 @@ import {
   ANVIL_FOUNDATION_ATTESTER_0,
   ANVIL_FOUNDATION_ATTESTER_1,
   ANVIL_FOUNDATION_ATTESTER_2,
-  BREAD_COOP,
   OBSUSD_NAME,
   OBSUSD_SYMBOL,
   OPTIMISM_CHAIN_ID,
   OP_AAVE_V3_INCENTIVES,
   OP_AAVE_V3_POOL,
   OP_A_DAI,
+  OP_BREAD_COOP,
+  OP_CYCLE_LENGTH,
   OP_DAI,
   OP_EAS,
   OP_FOUNDATION_ATTESTER_0,
   OP_FOUNDATION_ATTESTER_1,
+  OP_FUNDING_EXPIRY,
+  OP_MIN_VOUCHES,
   OP_SCHEMA_599,
-  OP_SCHEMA_638
+  OP_SCHEMA_638,
+  OP_SEASON_DURATION,
+  OP_SEASON_START
 } from 'script/Constants.sol';
 
 struct DeploymentParams {
@@ -68,11 +73,12 @@ contract Common is Script {
       name: 'BuildersManager',
       version: '1',
       settings: IBuildersManager.BuilderManagerSettings({
-        cycleLength: 7 days,
+        cycleLength: uint64(OP_CYCLE_LENGTH),
         lastClaimedTimestamp: uint64(block.timestamp),
-        currentSeasonExpiry: uint64(block.timestamp + 180 days),
-        seasonDuration: 365 days,
-        minVouches: 3,
+        fundingExpiry: uint64(OP_FUNDING_EXPIRY),
+        seasonStart: uint64(OP_SEASON_START),
+        seasonDuration: uint64(OP_SEASON_DURATION),
+        minVouches: OP_MIN_VOUCHES,
         optimismFoundationAttesters: _opAttesters
       })
     });
@@ -89,11 +95,12 @@ contract Common is Script {
       name: 'BuildersManager',
       version: '1',
       settings: IBuildersManager.BuilderManagerSettings({
-        cycleLength: 7 days,
+        cycleLength: uint64(OP_CYCLE_LENGTH),
         lastClaimedTimestamp: uint64(block.timestamp),
-        currentSeasonExpiry: uint64(block.timestamp + 180 days),
-        seasonDuration: 365 days,
-        minVouches: 3,
+        fundingExpiry: uint64(OP_FUNDING_EXPIRY),
+        seasonStart: uint64(OP_SEASON_START),
+        seasonDuration: uint64(OP_SEASON_DURATION),
+        minVouches: OP_MIN_VOUCHES,
         optimismFoundationAttesters: _anvilAttesters
       })
     });
@@ -130,7 +137,7 @@ contract Common is Script {
         deployer,
         abi.encodeWithSelector(
           BuildersDollar.initialize.selector,
-          BREAD_COOP,
+          OP_BREAD_COOP,
           OP_DAI,
           OP_A_DAI,
           OP_AAVE_V3_POOL,
