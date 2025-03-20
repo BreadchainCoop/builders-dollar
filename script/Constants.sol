@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
-// Tribute of 10% to Bread Coop
-address constant BREAD_COOP = 0x918dEf5d593F46735f74F9E2B280Fe51AF3A99ad;
-
-// Fixed-point multiplier
-uint256 constant WAD = 1e18;
-
 // --- Chain IDs --- //
 uint256 constant OPTIMISM_CHAIN_ID = 10;
 uint256 constant SEPOLIA_CHAIN_ID = 11_155_111;
@@ -14,6 +8,16 @@ uint256 constant HOLSKY_CHAIN_ID = 17_000;
 uint256 constant ANVIL_CHAIN_ID = 31_337;
 
 // --- Builders Dollar Deployment Params (Optimism Chain) --- //
+
+// Builders Dollar Settings
+uint256 constant OP_CYCLE_LENGTH = 30 days; // 1 month
+uint256 constant OP_FUNDING_EXPIRY = 304 days; // 10 months
+uint256 constant OP_SEASON_START = 1_704_067_200; // January 1, 2025 UTC
+uint256 constant OP_SEASON_DURATION = 365 days; // 1 year
+uint256 constant OP_MIN_VOUCHES = 3;
+
+// Tribute of 10% to Bread Coop
+address constant OP_BREAD_COOP = 0x918dEf5d593F46735f74F9E2B280Fe51AF3A99ad;
 
 // EAS Contract (Optimism Chain)
 address constant OP_EAS = 0x4200000000000000000000000000000000000021;

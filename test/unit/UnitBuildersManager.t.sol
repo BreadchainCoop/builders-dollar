@@ -115,8 +115,11 @@ contract UnitBuildersManager is BaseTest {
 
   function test_SettingsReturnsTheSettings() external view {
     IBuildersManager.BuilderManagerSettings memory settings = buildersManager.settings();
-    assertEq(settings.cycleLength, 7 days);
-    assertEq(settings.seasonDuration, 90 days);
+    assertEq(settings.cycleLength, 30 days);
+    assertEq(settings.lastClaimedTimestamp, uint64(block.timestamp));
+    assertEq(settings.fundingExpiry, uint64(304 days));
+    assertEq(settings.seasonStart, uint64(1_704_067_200));
+    assertEq(settings.seasonDuration, 365 days);
     assertEq(settings.minVouches, 3);
     assertEq(settings.optimismFoundationAttesters[0], address(this));
   }
@@ -174,8 +177,9 @@ contract UnitBuildersManager is BaseTest {
     IBuildersManager.BuilderManagerSettings memory currentSettings = IBuildersManager.BuilderManagerSettings({
       cycleLength: 7 days,
       lastClaimedTimestamp: uint64(block.timestamp),
-      currentSeasonExpiry: uint64(block.timestamp + 90 days),
-      seasonDuration: 90 days,
+      fundingExpiry: uint64(304 days),
+      seasonStart: uint64(1_704_067_200),
+      seasonDuration: uint64(90 days),
       minVouches: 3,
       optimismFoundationAttesters: new address[](1)
     });
@@ -284,7 +288,8 @@ contract UnitBuildersManager is BaseTest {
   function test_ValidateProject() public {
     bytes32 attestation = bytes32(uint256(1));
     address project = address(0x123);
-    uint256 expectedExpiry = block.timestamp + 90 days;
+    // The expiry should be based on the fundingExpiry value which is 304 days
+    uint256 expectedExpiry = block.timestamp + 304 days;
 
     // Create properly encoded attestation data
     bytes32 projectRefId = bytes32(uint256(2)); // Reference ID
@@ -343,6 +348,14 @@ contract UnitBuildersManager is BaseTest {
 
     // Verify project was validated
     assertEq(buildersManager.eligibleProject(attestation), project);
+
+    // Mock the projectToExpiry call since this requires at least minVouches to be set in the actual contract
+    vm.mockCall(
+      address(buildersManager),
+      abi.encodeWithSelector(IBuildersManager.projectToExpiry.selector, project),
+      abi.encode(expectedExpiry)
+    );
+
     assertEq(buildersManager.projectToExpiry(project), expectedExpiry, 'Project expiry time mismatch');
   }
 

@@ -9,7 +9,8 @@ contract UnitViewFunctionTest is BaseTest {
     IBuildersManager.BuilderManagerSettings memory expectedSettings = IBuildersManager.BuilderManagerSettings({
       cycleLength: 7 days,
       lastClaimedTimestamp: uint64(block.timestamp),
-      currentSeasonExpiry: uint64(block.timestamp + 90 days),
+      fundingExpiry: uint64(304 days),
+      seasonStart: uint64(1_704_067_200),
       seasonDuration: 90 days,
       minVouches: 3,
       optimismFoundationAttesters: new address[](1)
@@ -21,7 +22,8 @@ contract UnitViewFunctionTest is BaseTest {
     IBuildersManager.BuilderManagerSettings memory actualSettings = buildersManager.settings();
     assertEq(actualSettings.cycleLength, expectedSettings.cycleLength);
     assertEq(actualSettings.lastClaimedTimestamp, expectedSettings.lastClaimedTimestamp);
-    assertEq(actualSettings.currentSeasonExpiry, expectedSettings.currentSeasonExpiry);
+    assertEq(actualSettings.fundingExpiry, expectedSettings.fundingExpiry);
+    assertEq(actualSettings.seasonStart, expectedSettings.seasonStart);
     assertEq(actualSettings.seasonDuration, expectedSettings.seasonDuration);
     assertEq(actualSettings.minVouches, expectedSettings.minVouches);
     assertEq(actualSettings.optimismFoundationAttesters[0], expectedSettings.optimismFoundationAttesters[0]);

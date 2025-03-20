@@ -7,7 +7,6 @@ import {Ownable2StepUpgradeable} from '@oz-upgradeable/access/Ownable2StepUpgrad
 import {EIP712Upgradeable} from '@oz-upgradeable/utils/cryptography/EIP712Upgradeable.sol';
 import {IBuildersManager} from 'interfaces/IBuildersManager.sol';
 import {ISchemaValidator} from 'interfaces/ISchemaValidator.sol';
-import {WAD} from 'script/Constants.sol';
 
 contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuildersManager {
   /// @inheritdoc IBuildersManager
@@ -20,6 +19,9 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
   bytes32 public voterSchema;
   /// @inheritdoc IBuildersManager
   bytes32 public projectSchema;
+
+  /// @notice Multiplier for fixed-point arithmetic
+  uint256 internal _multiplier;
 
   // --- Data ---
 
@@ -81,7 +83,9 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     if (_token == address(0) || _eas == address(0)) revert SettingsNotSet();
     if (bytes(_name).length == 0 || bytes(_version).length == 0) revert SettingsNotSet();
     if (!(_s.optimismFoundationAttesters.length > 0)) revert SettingsNotSet();
-    if (_s.cycleLength * _s.currentSeasonExpiry * _s.seasonDuration * _s.minVouches == 0) revert SettingsNotSet();
+    if (_s.cycleLength * _s.fundingExpiry == 0 || _s.seasonStart == 0 || _s.seasonDuration * _s.minVouches == 0) {
+      revert SettingsNotSet();
+    }
 
     __Ownable_init(msg.sender);
     __EIP712_init(_name, _version);
@@ -89,6 +93,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     TOKEN = BuildersDollar(_token);
     EAS = IEAS(_eas);
     _settings = _s;
+    _multiplier = 10 ** TOKEN.decimals();
 
     uint256 _l = _s.optimismFoundationAttesters.length;
     for (uint256 _i; _i < _l; _i++) {
@@ -146,7 +151,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
 
     uint256 _yield = TOKEN.yieldAccrued();
     TOKEN.claimYield(_yield);
-    uint256 _yieldPerProject = (((_yield * 90 / 100) * WAD) / _l) / WAD;
+    uint256 _yieldPerProject = (((_yield * 90 / 100) * _multiplier) / _l) / _multiplier;
 
     for (uint256 _i; _i < _l; _i++) {
       TOKEN.TOKEN().transfer(_currentProjects[_i], _yieldPerProject);
@@ -171,8 +176,9 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
   function modifyParams(bytes32 _param, uint256 _value) external onlyOwner {
     if (_value == 0) revert ZeroValue();
     if (_param == 'cycleLength') _settings.cycleLength = uint64(_value);
-    else if (_param == 'currentSeasonExpiry') _settings.currentSeasonExpiry = uint64(_value);
-    else if (_param == 'seasonDuration') _settings.seasonDuration = _value;
+    else if (_param == 'fundingExpiry') _settings.fundingExpiry = uint64(_value);
+    else if (_param == 'seasonStart') _settings.seasonStart = uint64(_value);
+    else if (_param == 'seasonDuration') _settings.seasonDuration = uint64(_value);
     else if (_param == 'minVouches') _settings.minVouches = _value;
     else revert InvalidParameter();
 
@@ -242,6 +248,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     emit VouchRecorded(_caller, _project, _uid);
 
     if (projectToVouches[_project] == _settings.minVouches) {
+      projectToExpiry[_project] = block.timestamp + _settings.fundingExpiry;
       _currentProjects.push(_project);
       emit ProjectReachedMinVouches(_project, _uid);
     }
@@ -276,7 +283,6 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     if (_verified) {
       eligibleProject[_uid] = _project;
       eligibleProjectByUid[_project] = _uid;
-      projectToExpiry[_project] = _settings.currentSeasonExpiry;
       emit ProjectValidated(_uid, _project);
     }
   }

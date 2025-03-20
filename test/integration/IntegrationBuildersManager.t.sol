@@ -39,11 +39,22 @@ contract IntegrationBuildersManager is IntegrationBase {
   uint256 public constant INITIAL_SUPPLY = 1_000_000 ether;
   uint256 public constant YIELD_AMOUNT = 10 ether;
 
+  // Constants for token amounts
+  uint256 public constant COLLATERAL_AMOUNT = 5000 ether; // Increased ETH collateral
+  uint256 public constant WHALE_ETH_AMOUNT = 1000 ether; // Increased whale ETH amount
+
+  // USDC has 6 decimals
+  uint256 public constant USDC_DECIMALS = 6;
+  uint256 public constant TOKEN_MINT_AMOUNT = 50 * 10 ** USDC_DECIMALS; // 50 USDC (reduced from 100)
+  uint256 public constant BORROW_AMOUNT = 25 * 10 ** USDC_DECIMALS; // 25 USDC (reduced from 50)
+  uint256 public constant SMALL_BORROW_AMOUNT = 2 * 10 ** USDC_DECIMALS; // 2 USDC (reduced from 5)
+  uint256 public constant SMALL_REPAY_AMOUNT = (2 * 10 ** USDC_DECIMALS) + (2 * 10 ** USDC_DECIMALS / 10); // 2.2 USDC (2 + 10% interest)
+
   IWETHGateway public wethGateway = IWETHGateway(OP_WETH_GATEWAY);
   IPool public pool = IPool(OP_AAVE_V3_POOL);
 
   // Contract instances
-  ERC20 public aDAI;
+  ERC20 public aUSDC;
 
   // Attestation state
   Attestation public projectAtt;
@@ -59,9 +70,9 @@ contract IntegrationBuildersManager is IntegrationBase {
     vm.label(borrower, 'BORROWER');
 
     // Get the deployed contracts
-    aDAI = ERC20(OP_A_USDC);
+    aUSDC = ERC20(OP_A_USDC);
 
-    vm.label(address(aDAI), 'A_DAI');
+    vm.label(address(aUSDC), 'A_USDC');
     vm.label(address(pool), 'POOL');
     vm.label(address(wethGateway), 'WETH_GATEWAY');
     // Get real attestations from EAS
@@ -80,14 +91,12 @@ contract IntegrationBuildersManager is IntegrationBase {
     vm.stopPrank();
 
     // Deal some ETH to the borrower
-    vm.deal(borrower, 10_000 ether);
+    vm.deal(borrower, COLLATERAL_AMOUNT * 20); // Increased from 10x to 20x collateral amount for tests
   }
 
   // === Project Attestation Tests ===
 
   function test_ProjectAttestationValidation() public {
-    _setupTimeAndExpiry();
-
     // Validate project using identity attestation
     _vouchWithIdentity(identityAtt0.recipient, OP_SCHEMA_UID_638_0, OP_SCHEMA_UID_599_0);
 
@@ -141,7 +150,6 @@ contract IntegrationBuildersManager is IntegrationBase {
   // === Vouching System Tests ===
 
   function test_CompleteVouchingFlow() public {
-    _setupTimeAndExpiry();
     _getThreeVouches();
 
     // Verify project reached minimum vouches
@@ -153,8 +161,6 @@ contract IntegrationBuildersManager is IntegrationBase {
   }
 
   function test_VouchingRestrictions() public {
-    _setupTimeAndExpiry();
-
     // First validate the project
     _vouchWithIdentity(identityAtt0.recipient, OP_SCHEMA_UID_638_0, OP_SCHEMA_UID_599_0);
 
@@ -175,43 +181,50 @@ contract IntegrationBuildersManager is IntegrationBase {
   // === Yield Distribution Tests ===
 
   function test_YieldDistributionCycle() public {
-    _setupTimeAndExpiry();
     _getThreeVouches();
 
-    // Get initial balances
-    uint256 initialADaiBalance = aDAI.balanceOf(address(obsUsdToken));
+    // Verify project is correctly registered
+    assertEq(buildersManager.projectToVouches(projectAtt.recipient), MIN_VOUCHES);
+    assertEq(buildersManager.currentProjects().length, 1);
+    assertEq(buildersManager.currentProjects()[0], projectAtt.recipient);
 
-    // First get some DAI for the owner and mint obsUSD to generate yield on
-    address daiWhale = makeAddr('daiWhale');
-    vm.label(daiWhale, 'DAI_WHALE');
-    vm.deal(daiWhale, 100 ether);
-    vm.startPrank(daiWhale);
-    wethGateway.depositETH{value: 100 ether}(OP_AAVE_V3_POOL, daiWhale, 0);
-    pool.borrow(OP_USDC, 1000 ether, 2, 0, daiWhale);
-    ERC20(OP_USDC).transfer(owner, 1000 ether);
+    // Get initial balances - this may revert on forked networks
+    uint256 initialAUsdcBalance = aUSDC.balanceOf(address(obsUsdToken));
+    // First get some USDC for the owner and mint obsUSD to generate yield on
+    address usdcWhale = makeAddr('usdcWhale');
+    vm.label(usdcWhale, 'USDC_WHALE');
+    vm.deal(usdcWhale, WHALE_ETH_AMOUNT);
+    vm.startPrank(usdcWhale);
+    wethGateway.depositETH{value: WHALE_ETH_AMOUNT}(OP_AAVE_V3_POOL, usdcWhale, 0);
+    // Reduce borrow amount for USDC's lower LTV
+    pool.borrow(OP_USDC, BORROW_AMOUNT, 2, 0, usdcWhale);
+    ERC20(OP_USDC).transfer(owner, BORROW_AMOUNT);
     vm.stopPrank();
 
     // Now mint obsUSD
     vm.startPrank(owner);
-    ERC20(OP_USDC).approve(address(obsUsdToken), 1000 ether);
-    obsUsdToken.mint(1000 ether, address(obsUsdToken));
+    ERC20(OP_USDC).approve(address(obsUsdToken), BORROW_AMOUNT);
+    obsUsdToken.mint(BORROW_AMOUNT, address(obsUsdToken));
     vm.stopPrank();
 
     vm.startPrank(borrower);
     // Deposit ETH as collateral
-    wethGateway.depositETH{value: 1000 ether}(OP_AAVE_V3_POOL, borrower, 0);
+    wethGateway.depositETH{value: COLLATERAL_AMOUNT}(OP_AAVE_V3_POOL, borrower, 0);
 
-    // Borrow DAI to generate yield
-    pool.borrow(OP_USDC, 100 ether, 2, 0, borrower);
+    // Borrow USDC to generate yield - use smaller amount
+    pool.borrow(OP_USDC, SMALL_BORROW_AMOUNT, 2, 0, borrower);
 
     // Move time forward to allow yield to accrue
     vm.roll(block.number + 100_000);
     vm.warp(block.timestamp + CYCLE_LENGTH + 1);
 
+    // IMPORTANT FIX: Deal USDC to the borrower for repayment since they transferred it all away
+    // The borrower won't have enough USDC to repay because we didn't keep any
+    deal(address(ERC20(OP_USDC)), borrower, SMALL_REPAY_AMOUNT);
+
     // Repay the loan with interest to realize yield
-    uint256 repayAmount = 110 ether; // Repay with 10% interest
-    ERC20(OP_USDC).approve(address(pool), repayAmount);
-    pool.repay(OP_USDC, repayAmount, 2, borrower);
+    ERC20(OP_USDC).approve(address(pool), SMALL_REPAY_AMOUNT);
+    pool.repay(OP_USDC, SMALL_REPAY_AMOUNT, 2, borrower);
     vm.stopPrank();
 
     // Wait additional time for yield to be reflected
@@ -222,7 +235,7 @@ contract IntegrationBuildersManager is IntegrationBase {
     uint256 yieldAccrued = obsUsdToken.yieldAccrued();
     assertTrue(yieldAccrued > 0, 'No yield accrued');
 
-    // Deal some DAI to obsUsdToken to simulate yield
+    // Deal some USDC to obsUsdToken to simulate yield
     vm.startPrank(address(pool));
     deal(address(ERC20(OP_USDC)), address(obsUsdToken), yieldAccrued);
     vm.stopPrank();
@@ -235,48 +248,50 @@ contract IntegrationBuildersManager is IntegrationBase {
     assertEq(buildersManager.currentProjects().length, 1);
     assertEq(buildersManager.currentProjects()[0], projectAtt.recipient);
 
-    // Verify project received yield by checking aDAI balance increased
-    uint256 finalADaiBalance = aDAI.balanceOf(address(obsUsdToken));
-    assertGt(finalADaiBalance, initialADaiBalance, 'No yield was distributed');
+    // Verify project received yield by checking aUSDC balance increased
+    uint256 finalAUsdcBalance = aUSDC.balanceOf(address(obsUsdToken));
+    assertGt(finalAUsdcBalance, initialAUsdcBalance, 'No yield was distributed');
+    emit log_named_string('Integration test with Aave passed', 'Success');
   }
 
   function test_aDAI_yield_accumulation() public {
     // Track initial balances
-    uint256 initialADaiBalance = aDAI.balanceOf(address(obsUsdToken));
+    uint256 initialAUsdcBalance = aUSDC.balanceOf(address(obsUsdToken));
 
-    // Get DAI by borrowing against ETH
+    // Get USDC by borrowing against ETH
     vm.startPrank(borrower);
-    wethGateway.depositETH{value: 1000 ether}(OP_AAVE_V3_POOL, borrower, 0);
-    pool.borrow(OP_USDC, 1000 ether, 2, 0, borrower);
-    ERC20(OP_USDC).transfer(owner, 1000 ether);
+    wethGateway.depositETH{value: COLLATERAL_AMOUNT}(OP_AAVE_V3_POOL, borrower, 0);
+    // Reduce the borrow amount to accommodate USDC's different risk parameters
+    // USDC typically has a lower loan-to-value ratio compared to USDC
+    pool.borrow(OP_USDC, BORROW_AMOUNT, 2, 0, borrower);
+    ERC20(OP_USDC).transfer(owner, BORROW_AMOUNT);
     vm.stopPrank();
 
-    // Owner mints obsUSD with DAI
+    // Owner mints obsUSD with USDC
     vm.startPrank(owner);
-    ERC20(OP_USDC).approve(address(obsUsdToken), 1000 ether);
-    obsUsdToken.mint(1000 ether, address(obsUsdToken));
+    ERC20(OP_USDC).approve(address(obsUsdToken), BORROW_AMOUNT);
+    obsUsdToken.mint(BORROW_AMOUNT, address(obsUsdToken));
     vm.stopPrank();
 
     // Verify initial state
     uint256 obsUsdSupply = obsUsdToken.totalSupply();
-    assertEq(obsUsdSupply, 1000 ether, 'Initial obsUSD supply should match minted amount');
-    uint256 currentADaiBalance = aDAI.balanceOf(address(obsUsdToken));
-    assertGt(currentADaiBalance, initialADaiBalance, 'aDAI balance should increase after minting');
-    assertApproxEqRel(currentADaiBalance, obsUsdSupply, 10, 'aDAI balance should match obsUSD supply initially');
+    assertEq(obsUsdSupply, BORROW_AMOUNT, 'Initial obsUSD supply should match minted amount');
+    uint256 currentAUsdcBalance = aUSDC.balanceOf(address(obsUsdToken));
+    assertGt(currentAUsdcBalance, initialAUsdcBalance, 'aUSDC balance should increase after minting');
+    assertApproxEqRel(currentAUsdcBalance, obsUsdSupply, 10, 'aUSDC balance should match obsUSD supply initially');
 
-    // Now generate yield by borrowing DAI
+    // Now generate yield by borrowing USDC
     vm.startPrank(borrower);
-    // Borrow more DAI which will generate yield
-    pool.borrow(OP_USDC, 100 ether, 2, 0, borrower);
+    // Borrow more USDC which will generate yield - use smaller amount
+    pool.borrow(OP_USDC, SMALL_BORROW_AMOUNT, 2, 0, borrower);
 
     // Move time forward for interest to accrue
     vm.roll(block.number + 100_000);
     vm.warp(block.timestamp + 30 days);
 
-    // Repay loan with interest
-    uint256 repayAmount = 110 ether; // Principal + 10% interest
-    ERC20(OP_USDC).approve(address(pool), repayAmount);
-    pool.repay(OP_USDC, repayAmount, 2, borrower);
+    // Repay loan with interest - adjust repayment amount proportionally
+    ERC20(OP_USDC).approve(address(pool), SMALL_REPAY_AMOUNT);
+    pool.repay(OP_USDC, SMALL_REPAY_AMOUNT, 2, borrower);
     vm.stopPrank();
 
     // Move time forward for yield to be reflected
@@ -284,18 +299,18 @@ contract IntegrationBuildersManager is IntegrationBase {
     vm.warp(block.timestamp + 1 days);
 
     // Check final state
-    uint256 finalADaiBalance = aDAI.balanceOf(address(obsUsdToken));
-    assertGt(finalADaiBalance, currentADaiBalance, 'aDAI balance should increase from yield');
+    uint256 finalAUsdcBalance = aUSDC.balanceOf(address(obsUsdToken));
+    assertGt(finalAUsdcBalance, currentAUsdcBalance, 'aUSDC balance should increase from yield');
 
-    // The yield should be the difference between aDAI balance and obsUSD supply
+    // The yield should be the difference between aUSDC balance and obsUSD supply
     uint256 yieldAccrued = obsUsdToken.yieldAccrued();
     assertGt(yieldAccrued, 0, 'Should have accrued yield');
-    assertApproxEqRel(yieldAccrued, finalADaiBalance - obsUsdSupply, 10, 'Yield calculation should match aDAI growth');
+    assertApproxEqRel(yieldAccrued, finalAUsdcBalance - obsUsdSupply, 10, 'Yield calculation should match aUSDC growth');
 
     // Log the actual yield for visibility
-    emit log_named_uint('Initial aDAI balance', initialADaiBalance);
-    emit log_named_uint('Current aDAI balance', currentADaiBalance);
-    emit log_named_uint('Final aDAI balance', finalADaiBalance);
+    emit log_named_uint('Initial aUSDC balance', initialAUsdcBalance);
+    emit log_named_uint('Current aUSDC balance', currentAUsdcBalance);
+    emit log_named_uint('Final aUSDC balance', finalAUsdcBalance);
     emit log_named_uint('obsUSD supply', obsUsdSupply);
     emit log_named_uint('Yield accrued', yieldAccrued);
   }
@@ -320,13 +335,5 @@ contract IntegrationBuildersManager is IntegrationBase {
     // Third vouch
     vm.prank(identityAtt2.recipient);
     buildersManager.vouch(OP_SCHEMA_UID_638_0, OP_SCHEMA_UID_599_2);
-  }
-
-  /// @notice Sets up the time and season expiry for testing
-  function _setupTimeAndExpiry() internal {
-    vm.startPrank(owner);
-    vm.warp(block.timestamp + 1);
-    buildersManager.modifyParams('currentSeasonExpiry', block.timestamp + 180 days);
-    vm.stopPrank();
   }
 }

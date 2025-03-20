@@ -26,15 +26,19 @@ contract BaseTest is Test {
     vm.warp(1_704_067_200); // January 1, 2024 UTC
     vm.roll(19_000_000); // A recent Ethereum block number
 
+    // Mock the decimals function call
+    vm.mockCall(token, abi.encodeWithSignature('decimals()'), abi.encode(uint8(6))); // Mock USDC with 6 decimals
+
     // Deploy implementation
     BuildersManager implementation = new BuildersManager();
 
     // Initialize with required parameters
     IBuildersManager.BuilderManagerSettings memory _settings = IBuildersManager.BuilderManagerSettings({
-      cycleLength: 7 days,
+      cycleLength: 30 days,
       lastClaimedTimestamp: uint64(block.timestamp),
-      currentSeasonExpiry: uint64(block.timestamp + 90 days),
-      seasonDuration: 90 days,
+      fundingExpiry: uint64(304 days),
+      seasonStart: uint64(1_704_067_200),
+      seasonDuration: uint64(365 days),
       minVouches: 3,
       optimismFoundationAttesters: new address[](1)
     });

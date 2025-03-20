@@ -725,7 +725,7 @@
 
 BuildersDollarToken@BreadchainCoop/BuildersDollarToken:
   version "0.0.0"
-  resolved "https://codeload.github.com/BreadchainCoop/BuildersDollarToken/tar.gz/350ca7459fbf826f3f2ac580a88a9b7a6b744093"
+  resolved "https://codeload.github.com/BreadchainCoop/BuildersDollarToken/tar.gz/218a7158df875f7d47a043070c096cc36fc3d794"
 
 JSONStream@^1.3.5:
   version "1.3.5"
@@ -2548,7 +2548,7 @@ obliterator@^2.0.0:
 
 obsUSD-token@BreadchainCoop/obsUSD-token:
   version "0.0.0"
-  resolved "https://codeload.github.com/BreadchainCoop/obsUSD-token/tar.gz/350ca7459fbf826f3f2ac580a88a9b7a6b744093"
+  resolved "https://codeload.github.com/BreadchainCoop/obsUSD-token/tar.gz/218a7158df875f7d47a043070c096cc36fc3d794"
 
 once@^1.3.0:
   version "1.4.0"

@@ -13,10 +13,11 @@ contract UnitInitializationTest is BaseTest {
 
     // Create settings
     IBuildersManager.BuilderManagerSettings memory settings = IBuildersManager.BuilderManagerSettings({
-      cycleLength: 7 days,
+      cycleLength: 30 days,
       lastClaimedTimestamp: uint64(block.timestamp),
-      currentSeasonExpiry: uint64(block.timestamp + 90 days),
-      seasonDuration: 90 days,
+      fundingExpiry: uint64(304 days),
+      seasonStart: uint64(1_704_067_200),
+      seasonDuration: uint64(365 days),
       minVouches: 3,
       optimismFoundationAttesters: new address[](1)
     });
@@ -36,7 +37,8 @@ contract UnitInitializationTest is BaseTest {
     IBuildersManager.BuilderManagerSettings memory actualSettings = newManager.settings();
     assertEq(actualSettings.cycleLength, settings.cycleLength);
     assertEq(actualSettings.lastClaimedTimestamp, settings.lastClaimedTimestamp);
-    assertEq(actualSettings.currentSeasonExpiry, settings.currentSeasonExpiry);
+    assertEq(actualSettings.fundingExpiry, settings.fundingExpiry);
+    assertEq(actualSettings.seasonStart, settings.seasonStart);
     assertEq(actualSettings.seasonDuration, settings.seasonDuration);
     assertEq(actualSettings.minVouches, settings.minVouches);
     assertEq(actualSettings.optimismFoundationAttesters[0], settings.optimismFoundationAttesters[0]);
@@ -50,8 +52,9 @@ contract UnitInitializationTest is BaseTest {
     IBuildersManager.BuilderManagerSettings memory settings = IBuildersManager.BuilderManagerSettings({
       cycleLength: 0, // Invalid cycle length
       lastClaimedTimestamp: uint64(block.timestamp),
-      currentSeasonExpiry: uint64(block.timestamp + 90 days),
-      seasonDuration: 90 days,
+      fundingExpiry: uint64(304 days),
+      seasonStart: uint64(1_704_067_200),
+      seasonDuration: uint64(365 days),
       minVouches: 3,
       optimismFoundationAttesters: new address[](1)
     });
@@ -77,8 +80,9 @@ contract UnitInitializationTest is BaseTest {
       IBuildersManager.BuilderManagerSettings({
         cycleLength: 7 days,
         lastClaimedTimestamp: uint64(block.timestamp),
-        currentSeasonExpiry: uint64(block.timestamp + 90 days),
-        seasonDuration: 90 days,
+        fundingExpiry: uint64(304 days),
+        seasonStart: uint64(1_704_067_200),
+        seasonDuration: uint64(365 days),
         minVouches: 3,
         optimismFoundationAttesters: new address[](1)
       })
