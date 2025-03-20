@@ -7,8 +7,7 @@ import {ERC20} from '@oz/token/ERC20/ERC20.sol';
 import {IBuildersManager} from 'interfaces/IBuildersManager.sol';
 import {
   OP_AAVE_V3_POOL,
-  OP_A_DAI,
-  OP_DAI,
+  OP_A_USDC,
   OP_FOUNDATION_ATTESTER_0,
   OP_SCHEMA_599,
   OP_SCHEMA_UID_599_0,
@@ -16,6 +15,7 @@ import {
   OP_SCHEMA_UID_599_2,
   OP_SCHEMA_UID_599_3,
   OP_SCHEMA_UID_638_0,
+  OP_USDC,
   OP_WETH_GATEWAY
 } from 'script/Constants.sol';
 import {IntegrationBase} from 'test/integration/IntegrationBase.sol';
@@ -59,7 +59,7 @@ contract IntegrationBuildersManager is IntegrationBase {
     vm.label(borrower, 'BORROWER');
 
     // Get the deployed contracts
-    aDAI = ERC20(OP_A_DAI);
+    aDAI = ERC20(OP_A_USDC);
 
     vm.label(address(aDAI), 'A_DAI');
     vm.label(address(pool), 'POOL');
@@ -187,13 +187,13 @@ contract IntegrationBuildersManager is IntegrationBase {
     vm.deal(daiWhale, 100 ether);
     vm.startPrank(daiWhale);
     wethGateway.depositETH{value: 100 ether}(OP_AAVE_V3_POOL, daiWhale, 0);
-    pool.borrow(OP_DAI, 1000 ether, 2, 0, daiWhale);
-    ERC20(OP_DAI).transfer(owner, 1000 ether);
+    pool.borrow(OP_USDC, 1000 ether, 2, 0, daiWhale);
+    ERC20(OP_USDC).transfer(owner, 1000 ether);
     vm.stopPrank();
 
     // Now mint obsUSD
     vm.startPrank(owner);
-    ERC20(OP_DAI).approve(address(obsUsdToken), 1000 ether);
+    ERC20(OP_USDC).approve(address(obsUsdToken), 1000 ether);
     obsUsdToken.mint(1000 ether, address(obsUsdToken));
     vm.stopPrank();
 
@@ -202,7 +202,7 @@ contract IntegrationBuildersManager is IntegrationBase {
     wethGateway.depositETH{value: 1000 ether}(OP_AAVE_V3_POOL, borrower, 0);
 
     // Borrow DAI to generate yield
-    pool.borrow(OP_DAI, 100 ether, 2, 0, borrower);
+    pool.borrow(OP_USDC, 100 ether, 2, 0, borrower);
 
     // Move time forward to allow yield to accrue
     vm.roll(block.number + 100_000);
@@ -210,8 +210,8 @@ contract IntegrationBuildersManager is IntegrationBase {
 
     // Repay the loan with interest to realize yield
     uint256 repayAmount = 110 ether; // Repay with 10% interest
-    ERC20(OP_DAI).approve(address(pool), repayAmount);
-    pool.repay(OP_DAI, repayAmount, 2, borrower);
+    ERC20(OP_USDC).approve(address(pool), repayAmount);
+    pool.repay(OP_USDC, repayAmount, 2, borrower);
     vm.stopPrank();
 
     // Wait additional time for yield to be reflected
@@ -224,7 +224,7 @@ contract IntegrationBuildersManager is IntegrationBase {
 
     // Deal some DAI to obsUsdToken to simulate yield
     vm.startPrank(address(pool));
-    deal(address(ERC20(OP_DAI)), address(obsUsdToken), yieldAccrued);
+    deal(address(ERC20(OP_USDC)), address(obsUsdToken), yieldAccrued);
     vm.stopPrank();
 
     // Distribute yield
@@ -247,13 +247,13 @@ contract IntegrationBuildersManager is IntegrationBase {
     // Get DAI by borrowing against ETH
     vm.startPrank(borrower);
     wethGateway.depositETH{value: 1000 ether}(OP_AAVE_V3_POOL, borrower, 0);
-    pool.borrow(OP_DAI, 1000 ether, 2, 0, borrower);
-    ERC20(OP_DAI).transfer(owner, 1000 ether);
+    pool.borrow(OP_USDC, 1000 ether, 2, 0, borrower);
+    ERC20(OP_USDC).transfer(owner, 1000 ether);
     vm.stopPrank();
 
     // Owner mints obsUSD with DAI
     vm.startPrank(owner);
-    ERC20(OP_DAI).approve(address(obsUsdToken), 1000 ether);
+    ERC20(OP_USDC).approve(address(obsUsdToken), 1000 ether);
     obsUsdToken.mint(1000 ether, address(obsUsdToken));
     vm.stopPrank();
 
@@ -267,7 +267,7 @@ contract IntegrationBuildersManager is IntegrationBase {
     // Now generate yield by borrowing DAI
     vm.startPrank(borrower);
     // Borrow more DAI which will generate yield
-    pool.borrow(OP_DAI, 100 ether, 2, 0, borrower);
+    pool.borrow(OP_USDC, 100 ether, 2, 0, borrower);
 
     // Move time forward for interest to accrue
     vm.roll(block.number + 100_000);
@@ -275,8 +275,8 @@ contract IntegrationBuildersManager is IntegrationBase {
 
     // Repay loan with interest
     uint256 repayAmount = 110 ether; // Principal + 10% interest
-    ERC20(OP_DAI).approve(address(pool), repayAmount);
-    pool.repay(OP_DAI, repayAmount, 2, borrower);
+    ERC20(OP_USDC).approve(address(pool), repayAmount);
+    pool.repay(OP_USDC, repayAmount, 2, borrower);
     vm.stopPrank();
 
     // Move time forward for yield to be reflected
