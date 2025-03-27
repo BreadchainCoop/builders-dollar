@@ -46,7 +46,7 @@ bytes32 constant OP_SCHEMA_UID_599_3 = 0xec6e0ca3a831031555948ddaaed5de73af707b1
 
 // --- UBS-USD Token Deployment Params (Optimism Chain) --- //
 
-address constant OP_USDC = 0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85; // USDC
+address constant OP_USDC = 0x7F5c764cBc14f9669B88837ca1490cCa17c31607; // USDC.e
 address constant OP_A_USDC = 0x625E7708f30cA75bfd92586e17077590C60eb4cD; // aUSDC
 
 address constant OP_DAI = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
