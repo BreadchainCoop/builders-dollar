@@ -15,8 +15,8 @@ contract IntegrationDeploy is IntegrationBase {
   }
 
   function test_Ownable() public view {
-    assertEq(Ownable(address(obsUsdToken)).owner(), deployer);
-    assertEq(Ownable(address(buildersManager)).owner(), deployer);
+    assertEq(Ownable(address(obsUsdToken)).owner(), initialOwner);
+    assertEq(Ownable(address(buildersManager)).owner(), initialOwner);
     assertEq(Ownable2StepUpgradeable(address(buildersManager)).pendingOwner(), address(0));
   }
 }

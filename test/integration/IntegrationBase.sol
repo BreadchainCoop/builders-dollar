@@ -3,13 +3,15 @@ pragma solidity 0.8.27;
 
 import {IEAS} from '@eas/IEAS.sol';
 import {Test} from 'forge-std/Test.sol';
+
+import {OP_BREAD_COOP} from 'script/Constants.sol';
 import {Deploy} from 'script/Deploy.sol';
 
 contract IntegrationBase is Deploy, Test {
   uint256 public constant INIT_BALANCE = 1 ether;
 
   address public user = makeAddr('user');
-  address public owner = makeAddr('owner');
+  address public owner = OP_BREAD_COOP;
 
   /// @notice EAS contract
   IEAS public eas;
@@ -28,7 +30,7 @@ contract IntegrationBase is Deploy, Test {
 
   function setUp() public virtual override {
     super.setUp();
-    deployer = owner;
+    initialOwner = owner;
     vm.createSelectFork(vm.rpcUrl('optimism'));
 
     vm.startPrank(owner);

@@ -48,7 +48,9 @@ contract BaseTest is Test {
     TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
       address(implementation),
       address(this),
-      abi.encodeWithSelector(IBuildersManager.initialize.selector, token, eas, 'BuildersManager', '1', _settings)
+      abi.encodeWithSelector(
+        IBuildersManager.initialize.selector, token, eas, address(this), 'BuildersManager', '1', _settings
+      )
     );
 
     buildersManager = IBuildersManager(address(proxy));
