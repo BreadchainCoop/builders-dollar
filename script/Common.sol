@@ -38,6 +38,7 @@ import {
 struct DeploymentParams {
   address token; // BuildersDollar token address
   address eas; // Ethereum Attestation Service address
+  address admin; // Admin address
   string name; // Contract name for EIP712
   string version; // Contract version for EIP712
   IBuildersManager.BuilderManagerSettings settings; // Settings struct
@@ -55,8 +56,8 @@ contract Common is Script {
   /// @notice BuildersDollar contract
   BuildersDollar public obsUsdToken;
 
-  /// @notice Deployer address will be the owner of the proxy
-  address public deployer;
+  /// @notice initialOwner address will be the initialOwner of the proxy
+  address public initialOwner;
 
   /// @notice Deployment parameters for each chain
   mapping(uint256 _chainId => DeploymentParams _settings) internal _deploymentParams;
@@ -71,6 +72,7 @@ contract Common is Script {
       token: address(obsUsdToken),
       eas: OP_EAS,
       name: 'BuildersManager',
+      admin: OP_BREAD_COOP,
       version: '1',
       settings: IBuildersManager.BuilderManagerSettings({
         cycleLength: uint64(OP_CYCLE_LENGTH),
@@ -92,6 +94,7 @@ contract Common is Script {
     _deploymentParams[ANVIL_CHAIN_ID] = DeploymentParams({
       token: ANVIL_BUILDERS_DOLLAR,
       eas: ANVIL_EAS,
+      admin: OP_BREAD_COOP,
       name: 'BuildersManager',
       version: '1',
       settings: IBuildersManager.BuilderManagerSettings({
@@ -122,8 +125,10 @@ contract Common is Script {
     _buildersManagerProxy = address(
       new TransparentUpgradeableProxy(
         _implementation,
-        deployer,
-        abi.encodeWithSelector(IBuildersManager.initialize.selector, _s.token, _s.eas, _s.name, _s.version, _s.settings)
+        initialOwner,
+        abi.encodeWithSelector(
+          IBuildersManager.initialize.selector, _s.token, _s.eas, _s.admin, _s.name, _s.version, _s.settings
+        )
       )
     );
   }
@@ -134,7 +139,7 @@ contract Common is Script {
     _obsUsdTokenProxy = address(
       new EIP173ProxyWithReceive(
         _implementation,
-        deployer,
+        initialOwner,
         abi.encodeWithSelector(
           BuildersDollar.initialize.selector,
           OP_BREAD_COOP,

@@ -75,6 +75,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
   function initialize(
     address _token,
     address _eas,
+    address _admin,
     string memory _name,
     string memory _version,
     BuilderManagerSettings memory __settings
@@ -87,7 +88,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
       revert SettingsNotSet();
     }
 
-    __Ownable_init(msg.sender);
+    __Ownable_init(_admin);
     __EIP712_init(_name, _version);
 
     TOKEN = BuildersDollar(_token);

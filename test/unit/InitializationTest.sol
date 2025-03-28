@@ -27,7 +27,9 @@ contract UnitInitializationTest is BaseTest {
     TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
       address(implementation),
       address(this),
-      abi.encodeWithSelector(IBuildersManager.initialize.selector, token, eas, 'BuildersManager', '1', settings)
+      abi.encodeWithSelector(
+        IBuildersManager.initialize.selector, token, eas, address(this), 'BuildersManager', '1', settings
+      )
     );
 
     // Cast proxy to BuildersManager interface
@@ -65,7 +67,9 @@ contract UnitInitializationTest is BaseTest {
     new TransparentUpgradeableProxy(
       address(implementation),
       address(this),
-      abi.encodeWithSelector(IBuildersManager.initialize.selector, token, eas, 'BuildersManager', '1', settings)
+      abi.encodeWithSelector(
+        IBuildersManager.initialize.selector, token, eas, address(this), 'BuildersManager', '1', settings
+      )
     );
   }
 
@@ -75,6 +79,7 @@ contract UnitInitializationTest is BaseTest {
     buildersManager.initialize(
       token,
       eas,
+      address(this),
       'BuildersManager',
       '1',
       IBuildersManager.BuilderManagerSettings({

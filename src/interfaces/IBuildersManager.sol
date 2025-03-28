@@ -124,6 +124,7 @@ interface IBuildersManager {
    * @notice Initialize the BuildersManager contract
    * @param _token The BuildersDollar token address
    * @param _eas The Ethereum-Attestation-Service (EAS) contract address
+   * @param _admin The admin address
    * @param _name The human-readable name of the signing domain (i.e. the name the protocol)
    * @param _version The current major version of the signing domain
    * @param _params The BuilderManager parameters
@@ -131,6 +132,7 @@ interface IBuildersManager {
   function initialize(
     address _token,
     address _eas,
+    address _admin,
     string memory _name,
     string memory _version,
     BuilderManagerSettings memory _params

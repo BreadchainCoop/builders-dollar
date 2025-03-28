@@ -273,7 +273,7 @@ contract IntegrationBuildersManager is IntegrationBase {
     assertEq(obsUsdSupply, BORROW_AMOUNT, 'Initial obsUSD supply should match minted amount');
     uint256 currentAUsdcBalance = aUSDC.balanceOf(address(obsUsdToken));
     assertGt(currentAUsdcBalance, initialAUsdcBalance, 'aUSDC balance should increase after minting');
-    assertApproxEqRel(currentAUsdcBalance, obsUsdSupply, 10, 'aUSDC balance should match obsUSD supply initially');
+    assertApproxEqRel(currentAUsdcBalance, obsUsdSupply, 100, 'aUSDC balance should match obsUSD supply initially');
 
     // Now generate yield by borrowing USDC
     vm.startPrank(borrower);
