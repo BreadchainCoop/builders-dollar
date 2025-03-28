@@ -235,11 +235,6 @@ contract IntegrationBuildersManager is IntegrationBase {
     uint256 yieldAccrued = obsUsdToken.yieldAccrued();
     assertTrue(yieldAccrued > 0, 'No yield accrued');
 
-    // Deal some USDC to obsUsdToken to simulate yield
-    vm.startPrank(address(pool));
-    deal(address(ERC20(OP_USDC)), address(obsUsdToken), yieldAccrued);
-    vm.stopPrank();
-
     // Distribute yield
     vm.prank(owner);
     buildersManager.distributeYield();
@@ -288,6 +283,9 @@ contract IntegrationBuildersManager is IntegrationBase {
     // Move time forward for interest to accrue
     vm.roll(block.number + 100_000);
     vm.warp(block.timestamp + 30 days);
+
+    // IMPORTANT FIX: Deal USDC to the borrower for repayment since they transferred it all away
+    deal(address(ERC20(OP_USDC)), borrower, SMALL_REPAY_AMOUNT);
 
     // Repay loan with interest - adjust repayment amount proportionally
     ERC20(OP_USDC).approve(address(pool), SMALL_REPAY_AMOUNT);
