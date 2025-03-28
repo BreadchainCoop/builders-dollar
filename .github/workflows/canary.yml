@@ -35,7 +35,7 @@ jobs:
           cache: 'yarn'
 
       - name: Install dependencies
-        run: yarn --frozen-lockfile
+        run: yarn  
 
       - name: Build project and generate out directory
         run: yarn build
