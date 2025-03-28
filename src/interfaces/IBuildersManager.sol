@@ -98,6 +98,8 @@ interface IBuildersManager {
   error AlreadyVerified();
   /// @notice Throws when the voter has already vouched for a project
   error AlreadyVouched();
+  /// @notice Throws when the schema are already initialized
+  error SchemaAlreadyInitialized();
   /// @notice Throws when the project is not in the current projects list
   error CycleNotReady();
   /// @notice Throws when the identification-attestation is required
@@ -136,6 +138,21 @@ interface IBuildersManager {
     string memory _name,
     string memory _version,
     BuilderManagerSettings memory _params
+  ) external;
+
+  /**
+   * @notice Initialize the schemas
+   * @dev This function can only be called once and will revert if called again (run in deploy script)
+   * @param _voterSchema The uid of the voter schema
+   * @param _voterValidator The validator address for the voter schema
+   * @param _projectSchema The uid of the project schema
+   * @param _projectValidator The validator address for the project schema
+   */
+  function initializeSchemas(
+    bytes32 _voterSchema,
+    address _voterValidator,
+    bytes32 _projectSchema,
+    address _projectValidator
   ) external;
 
   /**

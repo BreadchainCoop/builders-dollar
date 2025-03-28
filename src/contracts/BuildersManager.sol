@@ -64,7 +64,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     _;
   }
 
-  // --- Initializer ---
+  // --- Initializers ---
 
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
@@ -87,7 +87,6 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     if (_s.cycleLength * _s.fundingExpiry == 0 || _s.seasonStart == 0 || _s.seasonDuration * _s.minVouches == 0) {
       revert SettingsNotSet();
     }
-
     __Ownable_init(_admin);
     __EIP712_init(_name, _version);
 
@@ -100,6 +99,24 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     for (uint256 _i; _i < _l; _i++) {
       optimismFoundationAttester[_s.optimismFoundationAttesters[_i]] = true;
     }
+  }
+
+  /**
+   * @inheritdoc IBuildersManager
+   * @dev not `initializable` so deployer can call it after proxy is deployed
+   */
+  function initializeSchemas(
+    bytes32 _voterSchema,
+    address _voterValidator,
+    bytes32 _projectSchema,
+    address _projectValidator
+  ) external {
+    if (voterSchema != bytes32(0)) revert SchemaAlreadyInitialized();
+    if (projectSchema != bytes32(0)) revert SchemaAlreadyInitialized();
+    _registerSchema(_voterSchema, _voterValidator);
+    _registerSchema(_projectSchema, _projectValidator);
+    voterSchema = _voterSchema;
+    projectSchema = _projectSchema;
   }
 
   // --- External Methods ---
@@ -162,12 +179,12 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
 
   /// @inheritdoc IBuildersManager
   function registerSchema(bytes32 _schemaUid, address _validator) external onlyOwner {
-    if (ISchemaValidator(_validator).SCHEMA() != _schemaUid) revert ISchemaValidator.InvalidSchema();
-    schemaToValidator[_schemaUid] = _validator;
+    _registerSchema(_schemaUid, _validator);
   }
 
   /// @inheritdoc IBuildersManager
   function setSchemaValidator(bytes32 _param, bytes32 _schemaUid) external onlyOwner {
+    if (_schemaUid == bytes32(0)) revert ZeroValue();
     if (_param == 'voterSchema') voterSchema = _schemaUid;
     else if (_param == 'projectSchema') projectSchema = _schemaUid;
     else revert InvalidParameter();
@@ -234,6 +251,16 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
   }
 
   // --- Internal Utilities ---
+
+  /**
+   * @notice Internal function to register a schema
+   * @param _schemaUid The uid of the schema
+   * @param _validator The validator address
+   */
+  function _registerSchema(bytes32 _schemaUid, address _validator) internal {
+    if (ISchemaValidator(_validator).SCHEMA() != _schemaUid) revert ISchemaValidator.InvalidSchema();
+    schemaToValidator[_schemaUid] = _validator;
+  }
 
   /**
    * @notice Internal function to vouch for a project

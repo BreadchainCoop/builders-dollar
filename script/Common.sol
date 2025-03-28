@@ -8,6 +8,7 @@ import {BuildersManager, IBuildersManager} from 'contracts/BuildersManager.sol';
 import {SchemaValidator599} from 'contracts/schemas/SchemaValidator599.sol';
 import {SchemaValidator638} from 'contracts/schemas/SchemaValidator638.sol';
 import {Script} from 'forge-std/Script.sol';
+import {console} from 'forge-std/console.sol';
 import {
   ANVIL_BUILDERS_DOLLAR,
   ANVIL_CHAIN_ID,
@@ -56,7 +57,7 @@ contract Common is Script {
   /// @notice BuildersDollar contract
   BuildersDollar public obsUsdToken;
 
-  /// @notice initialOwner address will be the initialOwner of the proxy
+  /// @notice initialOwner address will be the owner of the proxy
   address public initialOwner;
 
   /// @notice Deployment parameters for each chain
@@ -113,12 +114,23 @@ contract Common is Script {
     obsUsdToken = BuildersDollar(_deployBuildersDollar());
     _deploymentParams[block.chainid].token = address(obsUsdToken);
     buildersManager = IBuildersManager(_deployBuildersManager());
-    _setupSchemaValidators();
-    _setYieldClaimer();
+    buildersManager.initializeSchemas(
+      OP_SCHEMA_599, address(_deploySchemaValidator599()), OP_SCHEMA_638, address(_deploySchemaValidator638())
+    );
+    obsUsdToken.initializeYieldClaimer(address(buildersManager));
+
+    console.log('BuildersManager deployed', address(buildersManager));
+    console.log('BuildersDollar  deployed', address(obsUsdToken));
+    console.log('Initial  owner  set   to', initialOwner);
+    console.log('Deployment complete');
+  }
+
+  function _deployBuildersManagerImp() internal returns (address _buildersManagerImp) {
+    _buildersManagerImp = address(new BuildersManager());
   }
 
   function _deployBuildersManager() internal returns (address _buildersManagerProxy) {
-    address _implementation = address(new BuildersManager());
+    address _implementation = _deployBuildersManagerImp();
 
     DeploymentParams memory _s = _deploymentParams[block.chainid];
 
@@ -133,8 +145,12 @@ contract Common is Script {
     );
   }
 
+  function _deployBuildersDollarImp() internal returns (address _obsUsdTokenImp) {
+    _obsUsdTokenImp = address(new BuildersDollar());
+  }
+
   function _deployBuildersDollar() internal returns (address _obsUsdTokenProxy) {
-    address _implementation = address(new BuildersDollar());
+    address _implementation = _deployBuildersDollarImp();
 
     _obsUsdTokenProxy = address(
       new EIP173ProxyWithReceive(
@@ -152,17 +168,6 @@ contract Common is Script {
         )
       )
     );
-  }
-
-  function _setYieldClaimer() internal {
-    obsUsdToken.setYieldClaimer(address(buildersManager));
-  }
-
-  function _setupSchemaValidators() internal {
-    buildersManager.registerSchema(OP_SCHEMA_599, _deploySchemaValidator599());
-    buildersManager.registerSchema(OP_SCHEMA_638, _deploySchemaValidator638());
-    buildersManager.setSchemaValidator('voterSchema', OP_SCHEMA_599);
-    buildersManager.setSchemaValidator('projectSchema', OP_SCHEMA_638);
   }
 
   function _deploySchemaValidator599() internal returns (address _schemaValidatorProxy) {
