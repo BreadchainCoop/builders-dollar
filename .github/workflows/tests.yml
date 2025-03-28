@@ -33,7 +33,7 @@ jobs:
           cache: 'yarn'
 
       - name: Install dependencies
-        run: yarn --frozen-lockfile --network-concurrency 1
+        run: yarn install --network-concurrency 1
 
       - name: Precompile using 0.8.14 and via-ir=false
         run: yarn build
@@ -60,7 +60,7 @@ jobs:
           cache: 'yarn'
 
       - name: Install dependencies
-        run: yarn --frozen-lockfile --network-concurrency 1
+        run: yarn install --network-concurrency 1
 
       - name: Precompile using 0.8.14 and via-ir=false
         run: yarn build
@@ -86,7 +86,7 @@ jobs:
           cache: 'yarn'
 
       - name: Install dependencies
-        run: yarn --frozen-lockfile --network-concurrency 1
+        run: yarn install --network-concurrency 1
 
       - name: Precompile with via-ir=false
         run: yarn build
@@ -117,6 +117,6 @@ jobs:
           cache: 'yarn'
 
       - name: Install dependencies
-        run: yarn --frozen-lockfile --network-concurrency 1
+        run: yarn   --network-concurrency 1
 
       - run: yarn lint:check

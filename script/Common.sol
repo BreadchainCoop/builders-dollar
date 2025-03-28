@@ -20,10 +20,9 @@ import {
   OPTIMISM_CHAIN_ID,
   OP_AAVE_V3_INCENTIVES,
   OP_AAVE_V3_POOL,
-  OP_A_DAI,
+  OP_A_USDC,
   OP_BREAD_COOP,
   OP_CYCLE_LENGTH,
-  OP_DAI,
   OP_EAS,
   OP_FOUNDATION_ATTESTER_0,
   OP_FOUNDATION_ATTESTER_1,
@@ -32,7 +31,8 @@ import {
   OP_SCHEMA_599,
   OP_SCHEMA_638,
   OP_SEASON_DURATION,
-  OP_SEASON_START
+  OP_SEASON_START,
+  OP_USDC
 } from 'script/Constants.sol';
 
 struct DeploymentParams {
@@ -138,8 +138,8 @@ contract Common is Script {
         abi.encodeWithSelector(
           BuildersDollar.initialize.selector,
           OP_BREAD_COOP,
-          OP_DAI,
-          OP_A_DAI,
+          OP_USDC,
+          OP_A_USDC,
           OP_AAVE_V3_POOL,
           OP_AAVE_V3_INCENTIVES,
           OBSUSD_NAME,

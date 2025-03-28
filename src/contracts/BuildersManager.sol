@@ -7,7 +7,6 @@ import {Ownable2StepUpgradeable} from '@oz-upgradeable/access/Ownable2StepUpgrad
 import {EIP712Upgradeable} from '@oz-upgradeable/utils/cryptography/EIP712Upgradeable.sol';
 import {IBuildersManager} from 'interfaces/IBuildersManager.sol';
 import {ISchemaValidator} from 'interfaces/ISchemaValidator.sol';
-import {WAD} from 'script/Constants.sol';
 
 contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuildersManager {
   /// @inheritdoc IBuildersManager
@@ -20,6 +19,9 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
   bytes32 public voterSchema;
   /// @inheritdoc IBuildersManager
   bytes32 public projectSchema;
+
+  /// @notice Multiplier for fixed-point arithmetic
+  uint256 internal _multiplier;
 
   // --- Data ---
 
@@ -91,6 +93,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     TOKEN = BuildersDollar(_token);
     EAS = IEAS(_eas);
     _settings = _s;
+    _multiplier = 10 ** TOKEN.decimals();
 
     uint256 _l = _s.optimismFoundationAttesters.length;
     for (uint256 _i; _i < _l; _i++) {
@@ -148,7 +151,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
 
     uint256 _yield = TOKEN.yieldAccrued();
     TOKEN.claimYield(_yield);
-    uint256 _yieldPerProject = (((_yield * 90 / 100) * WAD) / _l) / WAD;
+    uint256 _yieldPerProject = (((_yield * 90 / 100) * _multiplier) / _l) / _multiplier;
 
     for (uint256 _i; _i < _l; _i++) {
       TOKEN.TOKEN().transfer(_currentProjects[_i], _yieldPerProject);

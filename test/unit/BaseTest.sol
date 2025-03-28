@@ -26,6 +26,9 @@ contract BaseTest is Test {
     vm.warp(1_704_067_200); // January 1, 2024 UTC
     vm.roll(19_000_000); // A recent Ethereum block number
 
+    // Mock the decimals function call
+    vm.mockCall(token, abi.encodeWithSignature('decimals()'), abi.encode(uint8(6))); // Mock USDC with 6 decimals
+
     // Deploy implementation
     BuildersManager implementation = new BuildersManager();
 

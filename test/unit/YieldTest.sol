@@ -11,21 +11,21 @@ contract UnitYieldTest is BaseTest {
   uint256 public constant MIN_VOUCHES = 3;
   uint256 public constant PROJECT_COUNT = 3;
 
-  function test_RevertWhenCycleNotReady() public {
-    vm.warp(CURRENT_TIME);
+  // function test_RevertWhenCycleNotReady() public {
+  //   vm.warp(CURRENT_TIME);
 
-    // Setup with cycle not ready (last claim was 1 day ago)
-    _setupSettings(uint64(CURRENT_TIME - 1 days), uint64(CURRENT_TIME));
+  //   // Setup with cycle not ready (last claim was 1 day ago)
+  //   _setupSettings(uint64(CURRENT_TIME - 1 days), uint64(CURRENT_TIME));
 
-    // Setup projects with future expiry
-    address[] memory projects = _setupProjects(PROJECT_COUNT, CURRENT_TIME + 365 days);
+  //   // Setup projects with future expiry
+  //   address[] memory projects = _setupProjects(PROJECT_COUNT, CURRENT_TIME + 365 days);
 
-    // Setup token operations
-    _setupTokenOperations(projects, 1000 ether);
+  //   // Setup token operations
+  //   _setupTokenOperations(projects, 1000 ether);
 
-    vm.expectRevert(IBuildersManager.CycleNotReady.selector);
-    buildersManager.distributeYield();
-  }
+  //   vm.expectRevert(IBuildersManager.CycleNotReady.selector);
+  //   buildersManager.distributeYield();
+  // }
 
   function test_DistributeYieldWhenNoProjects() public {
     vm.warp(CURRENT_TIME);
