@@ -13,7 +13,7 @@
     "build": "forge build",
     "build:optimized": "FOUNDRY_PROFILE=optimized forge build",
     "coverage": "forge coverage --report summary --report lcov --match-path 'test/unit/*'",
-    "deploy:optimism": "bash -c 'source .env && forge script Deploy --rpc-url $OPTIMISM_RPC --private-key $OPTIMISM_DEPLOYER_KEY --broadcast --verify --etherscan-api-key $OP_ETHERSCAN_API_KEY --chain optimism -vvvvv'",
+    "deploy:optimism": "bash -c 'source .env && forge script Deploy --rpc-url $OPTIMISM_RPC --private-key $OPTIMISM_DEPLOYER_KEY --broadcast --verify --etherscan-api-key $OP_ETHERSCAN_API_KEY --slow --chain optimism -vvvvv'",
     "deploy:optimism:implementations": "bash -c 'source .env && forge script DeployImplementations --rpc-url $OPTIMISM_RPC --private-key $OPTIMISM_DEPLOYER_KEY --broadcast --verify --etherscan-api-key $OP_ETHERSCAN_API_KEY --chain optimism -vvvvv'",
     "deploy:optimism:simulate": "bash -c 'source .env && forge script Deploy --rpc-url $OPTIMISM_RPC --private-key $OPTIMISM_DEPLOYER_KEY --chain optimism -vvvvv'",
     "lint:check": "yarn lint:sol && forge fmt --check",

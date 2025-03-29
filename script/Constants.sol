@@ -16,6 +16,19 @@ uint256 constant OP_SEASON_START = 1_704_067_200; // January 1, 2025 UTC
 uint256 constant OP_SEASON_DURATION = 365 days; // 1 year
 uint256 constant OP_MIN_VOUCHES = 3;
 
+string constant OBSUSD_NAME = 'Builders Dollar';
+string constant OBSUSD_SYMBOL = 'OBSUSD';
+
+// Builders Dollar Settings (for live testing)
+uint256 constant TEST_OP_CYCLE_LENGTH = 1 days; // 1 day
+uint256 constant TEST_OP_FUNDING_EXPIRY = 7 days; // 1 week
+uint256 constant TEST_OP_SEASON_START = 1_704_067_200; // January 1, 2025 UTC
+uint256 constant TEST_OP_SEASON_DURATION = 365 days; // 1 year
+uint256 constant TEST_OP_MIN_VOUCHES = 1;
+
+string constant TEST_OBSUSD_NAME = 'Test Builders Dollar';
+string constant TEST_OBSUSD_SYMBOL = 'TEST.OBSUSD';
+
 // Tribute of 10% to Bread Coop
 address constant OP_BREAD_COOP = 0x918dEf5d593F46735f74F9E2B280Fe51AF3A99ad;
 
@@ -44,16 +57,13 @@ bytes32 constant OP_SCHEMA_UID_599_1 = 0xabd013b11bf0ed3d9856633a89c2ea80da776ca
 bytes32 constant OP_SCHEMA_UID_599_2 = 0xff88ab7ad81e0582bd9e5d34298f837cebcec9b8d0f03e282e899e8329027ba4;
 bytes32 constant OP_SCHEMA_UID_599_3 = 0xec6e0ca3a831031555948ddaaed5de73af707b150586ca70a5fb163e425b0227;
 
-// --- UBS-USD Token Deployment Params (Optimism Chain) --- //
+// --- Underlying Liquidity Token Deployment Params (Optimism Chain) --- //
 
 address constant OP_USDC = 0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85; // USDC
 address constant OP_A_USDC = 0x38d693cE1dF5AaDF7bC62595A37D667aD57922e5; // aUSDC
 
 address constant OP_AAVE_V3_POOL = 0x794a61358D6845594F94dc1DB02A252b5b4814aD;
 address constant OP_AAVE_V3_INCENTIVES = 0x929EC64c34a17401F460460D4B9390518E5B473e;
-
-string constant OBSUSD_NAME = 'Builders Dollar';
-string constant OBSUSD_SYMBOL = 'OBSUSD';
 
 // --- Aave V2 (Optimism Chain) --- //
 address constant OP_WETH_GATEWAY = 0x86b4D2636EC473AC4A5dD83Fc2BEDa98845249A7;
