@@ -16,6 +16,8 @@ uint256 constant OP_SEASON_START = 1_704_067_200; // January 1, 2025 UTC
 uint256 constant OP_SEASON_DURATION = 365 days; // 1 year
 uint256 constant OP_MIN_VOUCHES = 3;
 
+string constant BUILDERS_MANAGER_NAME = 'Builders Manager';
+
 string constant OBSUSD_NAME = 'Builders Dollar';
 string constant OBSUSD_SYMBOL = 'OBSUSD';
 
@@ -25,6 +27,8 @@ uint256 constant TEST_OP_FUNDING_EXPIRY = 7 days; // 1 week
 uint256 constant TEST_OP_SEASON_START = 1_704_067_200; // January 1, 2025 UTC
 uint256 constant TEST_OP_SEASON_DURATION = 365 days; // 1 year
 uint256 constant TEST_OP_MIN_VOUCHES = 1;
+
+string constant TEST_BUILDERS_MANAGER_NAME = 'Test Builders Manager';
 
 string constant TEST_OBSUSD_NAME = 'Test Builders Dollar';
 string constant TEST_OBSUSD_SYMBOL = 'TEST.OBSUSD';

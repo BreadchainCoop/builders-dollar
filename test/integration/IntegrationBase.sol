@@ -34,7 +34,8 @@ contract IntegrationBase is Deploy, Test {
     vm.createSelectFork(vm.rpcUrl('optimism'));
 
     vm.startPrank(owner);
-    _runDeployments();
+    /// @dev Fork test with production settings
+    _runDeployments(PRODUCTION_ENV);
     vm.stopPrank();
 
     eas = buildersManager.EAS();
