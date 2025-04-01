@@ -168,7 +168,10 @@ contract BuilderManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilderM
     if (_l == 0) revert YieldNoProjects();
 
     uint256 _yield = TOKEN.yieldAccrued();
-    if (_yield > 0) {
+    uint256 _yieldPerProject;
+    if (_yield > 0) _yieldPerProject = (((_yield * 90 / 100) * _multiplier) / _l) / _multiplier;
+
+    if (_yieldPerProject > 0) {
       TOKEN.claimYield(_yield);
       uint256 _yieldPerProject = (((_yield * 90 / 100) * _multiplier) / _l) / _multiplier;
 
