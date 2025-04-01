@@ -18,7 +18,6 @@ import {
   ANVIL_FOUNDATION_ATTESTER_2,
   BUILDERS_MANAGER_NAME,
   OPTIMISM_CHAIN_ID,
-  OP_AAVE_V3_INCENTIVES,
   OP_AAVE_V3_POOL,
   OP_A_USDC,
   OP_BREAD_COOP,
@@ -34,6 +33,7 @@ import {
   OP_SEASON_START,
   OP_USDC,
   TEST_BUILDERS_MANAGER_NAME,
+  TEST_OP_BREAD_COOP,
   TEST_OP_CYCLE_LENGTH,
   TEST_OP_FUNDING_EXPIRY,
   TEST_OP_MIN_VOUCHES,
@@ -57,7 +57,6 @@ struct DeploymentParams {
   address underlyingAsset; // Underlying asset address
   address aToken; // aToken address
   address aaveV3Pool; // Aave V3 pool address
-  address aaveV3Incentives; // Aave V3 incentives address
   string tokenName; // Token name for OBSUSD
   string tokenSymbol; // Token symbol for OBSUSD
 }
@@ -107,7 +106,6 @@ contract Common is Script {
       underlyingAsset: OP_USDC,
       aToken: OP_A_USDC,
       aaveV3Pool: OP_AAVE_V3_POOL,
-      aaveV3Incentives: OP_AAVE_V3_INCENTIVES,
       tokenName: obUSD_NAME,
       tokenSymbol: obUSD_SYMBOL
     });
@@ -118,7 +116,7 @@ contract Common is Script {
       token: address(obUsdToken),
       eas: OP_EAS,
       name: TEST_BUILDERS_MANAGER_NAME,
-      admin: OP_BREAD_COOP,
+      admin: TEST_OP_BREAD_COOP,
       version: '1',
       settings: IBuilderManager.BuilderManagerSettings({
         cycleLength: uint64(TEST_OP_CYCLE_LENGTH),
@@ -133,7 +131,6 @@ contract Common is Script {
       underlyingAsset: OP_USDC,
       aToken: OP_A_USDC,
       aaveV3Pool: OP_AAVE_V3_POOL,
-      aaveV3Incentives: OP_AAVE_V3_INCENTIVES,
       tokenName: TEST_obUSD_NAME,
       tokenSymbol: TEST_obUSD_SYMBOL
     });
@@ -164,7 +161,6 @@ contract Common is Script {
       underlyingAsset: OP_USDC,
       aToken: OP_A_USDC,
       aaveV3Pool: OP_AAVE_V3_POOL,
-      aaveV3Incentives: OP_AAVE_V3_INCENTIVES,
       tokenName: obUSD_NAME,
       tokenSymbol: obUSD_SYMBOL
     });
@@ -224,7 +220,6 @@ contract Common is Script {
           _s.underlyingAsset,
           _s.aToken,
           _s.aaveV3Pool,
-          _s.aaveV3Incentives,
           _s.tokenName,
           _s.tokenSymbol
         )

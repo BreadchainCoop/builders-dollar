@@ -21,6 +21,9 @@ string constant BUILDERS_MANAGER_NAME = 'Builder Manager';
 string constant obUSD_NAME = 'Optimistic Builder Dollar';
 string constant obUSD_SYMBOL = 'obUSD';
 
+// Tribute of 10% to Bread Coop
+address constant OP_BREAD_COOP = 0x918dEf5d593F46735f74F9E2B280Fe51AF3A99ad;
+
 // Builders Dollar Settings (for live testing)
 uint256 constant TEST_OP_CYCLE_LENGTH = 1 days; // 1 day
 uint256 constant TEST_OP_FUNDING_EXPIRY = 5 days; // 5 days
@@ -34,7 +37,7 @@ string constant TEST_obUSD_NAME = 'Test Optimistic Builder Dollar';
 string constant TEST_obUSD_SYMBOL = 'TEST.obUSD';
 
 // Tribute of 10% to Bread Coop
-address constant OP_BREAD_COOP = 0x918dEf5d593F46735f74F9E2B280Fe51AF3A99ad;
+address constant TEST_OP_BREAD_COOP = 0x9DC0c7AD3b51e76d63cD8DF41a83fFFbB093c15e;
 
 // EAS Contract (Optimism Chain)
 address constant OP_EAS = 0x4200000000000000000000000000000000000021;
