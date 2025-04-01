@@ -169,11 +169,12 @@ contract BuilderManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilderM
 
     uint256 _yield = TOKEN.yieldAccrued();
     uint256 _yieldPerProject;
-    if (_yield > 0) _yieldPerProject = (((_yield * 90 / 100) * _multiplier) / _l) / _multiplier;
+    /// @dev if yield is greater than 1 USD-pegged stablecoin
+    if (_yield > _multiplier) _yieldPerProject = (((_yield * 90 / 100) * _multiplier) / _l) / _multiplier;
 
-    if (_yieldPerProject > 0) {
+    /// @dev only distribute yield when greater than 1 USD-pegged stablecoin
+    if (_yieldPerProject > _multiplier) {
       TOKEN.claimYield(_yield);
-      uint256 _yieldPerProject = (((_yield * 90 / 100) * _multiplier) / _l) / _multiplier;
 
       for (uint256 _i; _i < _l; _i++) {
         TOKEN.TOKEN().transfer(_currentProjects[_i], _yieldPerProject);
