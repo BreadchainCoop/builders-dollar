@@ -12,26 +12,26 @@ uint256 constant ANVIL_CHAIN_ID = 31_337;
 // Builders Dollar Settings
 uint256 constant OP_CYCLE_LENGTH = 30 days; // 1 month
 uint256 constant OP_FUNDING_EXPIRY = 304 days; // 10 months
-uint256 constant OP_SEASON_START = 1_704_067_200; // January 1, 2025 UTC
-uint256 constant OP_SEASON_DURATION = 365 days; // 1 year
+uint256 constant OP_SEASON_START = 1_704_067_200; // January 1, 2024 UTC
+uint256 constant OP_SEASON_DURATION = 4380 days; // 12 years
 uint256 constant OP_MIN_VOUCHES = 3;
 
-string constant BUILDERS_MANAGER_NAME = 'Builders Manager';
+string constant BUILDERS_MANAGER_NAME = 'Builder Manager';
 
-string constant OBSUSD_NAME = 'Builders Dollar';
-string constant OBSUSD_SYMBOL = 'OBSUSD';
+string constant obUSD_NAME = 'Optimistic Builder Dollar';
+string constant obUSD_SYMBOL = 'obUSD';
 
 // Builders Dollar Settings (for live testing)
 uint256 constant TEST_OP_CYCLE_LENGTH = 1 days; // 1 day
-uint256 constant TEST_OP_FUNDING_EXPIRY = 7 days; // 1 week
-uint256 constant TEST_OP_SEASON_START = 1_704_067_200; // January 1, 2025 UTC
-uint256 constant TEST_OP_SEASON_DURATION = 365 days; // 1 year
+uint256 constant TEST_OP_FUNDING_EXPIRY = 5 days; // 5 days
+uint256 constant TEST_OP_SEASON_START = 1_704_067_200; // January 1, 2024 UTC
+uint256 constant TEST_OP_SEASON_DURATION = 4380 days; // 12 years
 uint256 constant TEST_OP_MIN_VOUCHES = 1;
 
-string constant TEST_BUILDERS_MANAGER_NAME = 'Test Builders Manager';
+string constant TEST_BUILDERS_MANAGER_NAME = 'Test Builder Manager';
 
-string constant TEST_OBSUSD_NAME = 'Test Builders Dollar';
-string constant TEST_OBSUSD_SYMBOL = 'TEST.OBSUSD';
+string constant TEST_obUSD_NAME = 'Test Optimistic Builder Dollar';
+string constant TEST_obUSD_SYMBOL = 'TEST.obUSD';
 
 // Tribute of 10% to Bread Coop
 address constant OP_BREAD_COOP = 0x918dEf5d593F46735f74F9E2B280Fe51AF3A99ad;

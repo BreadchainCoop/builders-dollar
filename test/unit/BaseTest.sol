@@ -5,15 +5,15 @@ import {Attestation, EMPTY_UID} from '@eas/Common.sol';
 import {SchemaRecord} from '@eas/ISchemaRegistry.sol';
 import {ISchemaResolver} from '@eas/resolver/ISchemaResolver.sol';
 import {TransparentUpgradeableProxy} from '@oz/proxy/transparent/TransparentUpgradeableProxy.sol';
-import {BuildersManager, IBuildersManager} from 'contracts/BuildersManager.sol';
+import {BuilderManager, IBuilderManager} from 'contracts/BuilderManager.sol';
 import {SchemaValidator599} from 'contracts/schemas/SchemaValidator599.sol';
 import {SchemaValidator638} from 'contracts/schemas/SchemaValidator638.sol';
 import {Test} from 'forge-std/Test.sol';
 import {OP_SCHEMA_599, OP_SCHEMA_638} from 'script/Constants.sol';
 
 contract BaseTest is Test {
-  IBuildersManager public buildersManager;
-  address public token = makeAddr('builders-dollar');
+  IBuilderManager public builderManager;
+  address public token = makeAddr('builder-dollar');
   address public eas = makeAddr('eas');
   address public voterSchemaValidator;
   address public projectSchemaValidator;
@@ -30,10 +30,10 @@ contract BaseTest is Test {
     vm.mockCall(token, abi.encodeWithSignature('decimals()'), abi.encode(uint8(6))); // Mock USDC with 6 decimals
 
     // Deploy implementation
-    BuildersManager implementation = new BuildersManager();
+    BuilderManager implementation = new BuilderManager();
 
     // Initialize with required parameters
-    IBuildersManager.BuilderManagerSettings memory _settings = IBuildersManager.BuilderManagerSettings({
+    IBuilderManager.BuilderManagerSettings memory _settings = IBuilderManager.BuilderManagerSettings({
       cycleLength: 30 days,
       lastClaimedTimestamp: uint64(block.timestamp),
       fundingExpiry: uint64(304 days),
@@ -49,21 +49,21 @@ contract BaseTest is Test {
       address(implementation),
       address(this),
       abi.encodeWithSelector(
-        IBuildersManager.initialize.selector, token, eas, address(this), 'BuildersManager', '1', _settings
+        IBuilderManager.initialize.selector, token, eas, address(this), 'BuilderManager', '1', _settings
       )
     );
 
-    buildersManager = IBuildersManager(address(proxy));
+    builderManager = IBuilderManager(address(proxy));
 
     // Mock EAS schema registry before creating schema validators
     mockEASSchemaRegistry();
 
-    voterSchemaValidator = address(new SchemaValidator599(OP_SCHEMA_599, address(buildersManager)));
-    projectSchemaValidator = address(new SchemaValidator638(OP_SCHEMA_638, address(buildersManager)));
-    buildersManager.registerSchema(OP_SCHEMA_599, voterSchemaValidator);
-    buildersManager.registerSchema(OP_SCHEMA_638, projectSchemaValidator);
-    buildersManager.setSchemaValidator('voterSchema', OP_SCHEMA_599);
-    buildersManager.setSchemaValidator('projectSchema', OP_SCHEMA_638);
+    voterSchemaValidator = address(new SchemaValidator599(OP_SCHEMA_599, address(builderManager)));
+    projectSchemaValidator = address(new SchemaValidator638(OP_SCHEMA_638, address(builderManager)));
+    builderManager.registerSchema(OP_SCHEMA_599, voterSchemaValidator);
+    builderManager.registerSchema(OP_SCHEMA_638, projectSchemaValidator);
+    builderManager.setSchemaValidator('voterSchema', OP_SCHEMA_599);
+    builderManager.setSchemaValidator('projectSchema', OP_SCHEMA_638);
 
     // Mock initial settings
     mockSettings(_settings);
@@ -144,7 +144,7 @@ contract BaseTest is Test {
     // Mock transfers
     uint256 amountPerRecipient = yieldAmount / recipients.length;
     for (uint256 i = 0; i < recipients.length; i++) {
-      // Mock BuildersDollar.TOKEN() call
+      // Mock BuilderDollar.TOKEN() call
       vm.mockCall(address(token), abi.encodeWithSignature('TOKEN()'), abi.encode(token));
       vm.mockCall(
         address(token),
@@ -187,50 +187,46 @@ contract BaseTest is Test {
 
   function mockValidateOptimismVoter(bytes32 attestation, bool result) public {
     vm.mockCall(
-      address(buildersManager),
-      abi.encodeWithSelector(IBuildersManager.validateOptimismVoter.selector, attestation),
+      address(builderManager),
+      abi.encodeWithSelector(IBuilderManager.validateOptimismVoter.selector, attestation),
       abi.encode(result)
     );
   }
 
   function mockVouch(bytes32 projectAttestation) public {
-    vm.mockCall(address(buildersManager), abi.encodeWithSignature('vouch(bytes32)', projectAttestation), abi.encode());
+    vm.mockCall(address(builderManager), abi.encodeWithSignature('vouch(bytes32)', projectAttestation), abi.encode());
   }
 
   function mockVouchWithIdentity(bytes32 projectAttestation, bytes32 _identityAttestation) public {
     vm.mockCall(
-      address(buildersManager),
+      address(builderManager),
       abi.encodeWithSignature('vouch(bytes32,bytes32)', projectAttestation, _identityAttestation),
       abi.encode()
     );
   }
 
   function mockDistributeYield() public {
-    vm.mockCall(
-      address(buildersManager), abi.encodeWithSelector(IBuildersManager.distributeYield.selector), abi.encode()
-    );
+    vm.mockCall(address(builderManager), abi.encodeWithSelector(IBuilderManager.distributeYield.selector), abi.encode());
   }
 
   function mockModifyParams(bytes32 param, uint256 value) public {
     vm.mockCall(
-      address(buildersManager),
-      abi.encodeWithSelector(IBuildersManager.modifyParams.selector, param, value),
-      abi.encode()
+      address(builderManager), abi.encodeWithSelector(IBuilderManager.modifyParams.selector, param, value), abi.encode()
     );
   }
 
   function mockUpdateOpFoundationAttester(address attester, bool status) public {
     vm.mockCall(
-      address(buildersManager),
-      abi.encodeWithSelector(IBuildersManager.updateOpFoundationAttester.selector, attester, status),
+      address(builderManager),
+      abi.encodeWithSelector(IBuilderManager.updateOpFoundationAttester.selector, attester, status),
       abi.encode()
     );
   }
 
   function mockBatchUpdateOpFoundationAttesters(address[] memory attesters, bool[] memory statuses) public {
     vm.mockCall(
-      address(buildersManager),
-      abi.encodeWithSelector(IBuildersManager.batchUpdateOpFoundationAttesters.selector, attesters, statuses),
+      address(builderManager),
+      abi.encodeWithSelector(IBuilderManager.batchUpdateOpFoundationAttesters.selector, attesters, statuses),
       abi.encode()
     );
   }
@@ -239,79 +235,79 @@ contract BaseTest is Test {
 
   function expectValidateOptimismVoter(bytes32 _attestation) public {
     vm.expectCall(
-      address(buildersManager), abi.encodeWithSelector(IBuildersManager.validateOptimismVoter.selector, _attestation)
+      address(builderManager), abi.encodeWithSelector(IBuilderManager.validateOptimismVoter.selector, _attestation)
     );
   }
 
   function expectVouch(bytes32 _projectAttestation) public {
-    vm.expectCall(address(buildersManager), abi.encodeWithSignature('vouch(bytes32)', _projectAttestation));
+    vm.expectCall(address(builderManager), abi.encodeWithSignature('vouch(bytes32)', _projectAttestation));
   }
 
   function expectVouchWithIdentity(bytes32 _projectAttestation, bytes32 _identityAttestation) public {
     vm.expectCall(
-      address(buildersManager),
+      address(builderManager),
       abi.encodeWithSignature('vouch(bytes32,bytes32)', _projectAttestation, _identityAttestation)
     );
   }
 
   function expectDistributeYield() public {
-    vm.expectCall(address(buildersManager), abi.encodeWithSelector(IBuildersManager.distributeYield.selector));
+    vm.expectCall(address(builderManager), abi.encodeWithSelector(IBuilderManager.distributeYield.selector));
   }
 
   function expectModifyParams(bytes32 _param, uint256 _value) public {
     vm.expectCall(
-      address(buildersManager), abi.encodeWithSelector(IBuildersManager.modifyParams.selector, _param, _value)
+      address(builderManager), abi.encodeWithSelector(IBuilderManager.modifyParams.selector, _param, _value)
     );
   }
 
   function expectUpdateOpFoundationAttester(address _attester, bool _status) public {
     vm.expectCall(
-      address(buildersManager),
-      abi.encodeWithSelector(IBuildersManager.updateOpFoundationAttester.selector, _attester, _status)
+      address(builderManager),
+      abi.encodeWithSelector(IBuilderManager.updateOpFoundationAttester.selector, _attester, _status)
     );
   }
 
   function expectBatchUpdateOpFoundationAttesters(address[] memory _attesters, bool[] memory _statuses) public {
     vm.expectCall(
-      address(buildersManager),
-      abi.encodeWithSelector(IBuildersManager.batchUpdateOpFoundationAttesters.selector, _attesters, _statuses)
+      address(builderManager),
+      abi.encodeWithSelector(IBuilderManager.batchUpdateOpFoundationAttesters.selector, _attesters, _statuses)
     );
   }
 
   // --- View Function Mock Helpers ---
 
-  function mockSettings(IBuildersManager.BuilderManagerSettings memory _settings) public {
+  function mockSettings(IBuilderManager.BuilderManagerSettings memory _settings) public {
     vm.mockCall(
-      address(buildersManager), abi.encodeWithSelector(IBuildersManager.settings.selector), abi.encode(_settings)
+      address(builderManager), abi.encodeWithSelector(IBuilderManager.settings.selector), abi.encode(_settings)
     );
   }
 
   function mockCurrentProjects(address[] memory _projects) public {
     vm.mockCall(
-      address(buildersManager), abi.encodeWithSelector(IBuildersManager.currentProjects.selector), abi.encode(_projects)
+      address(builderManager), abi.encodeWithSelector(IBuilderManager.currentProjects.selector), abi.encode(_projects)
     );
   }
 
   function mockOptimismFoundationAttesters(address[] memory _attesters) public {
     vm.mockCall(
-      address(buildersManager),
-      abi.encodeWithSelector(IBuildersManager.optimismFoundationAttesters.selector),
+      address(builderManager),
+      abi.encodeWithSelector(IBuilderManager.optimismFoundationAttesters.selector),
       abi.encode(_attesters)
     );
   }
 
   function mockEligibleVoter(address _voter, bool _isEligible) public {
     vm.mockCall(
-      address(buildersManager),
-      abi.encodeWithSelector(IBuildersManager.eligibleVoter.selector, _voter),
+      address(builderManager),
+      abi.encodeWithSelector(IBuilderManager.eligibleVoter.selector, _voter),
       abi.encode(_isEligible)
     );
   }
 
   function mockEligibleProject(bytes32 _uid, address _project) public {
     vm.mockCall(
-      address(buildersManager),
-      abi.encodeWithSelector(IBuildersManager.eligibleProject.selector, _uid),
+      address(builderManager),
+      abi.encodeWithSelector(IBuilderManager.eligibleProject.selector, _uid),
       abi.encode(_project)
     );
   }
@@ -360,7 +356,7 @@ contract BaseTest is Test {
 
         // Mock the vouch call to succeed
         vm.prank(_voter);
-        buildersManager.vouch(_projectUid, _voterUid);
+        builderManager.vouch(_projectUid, _voterUid);
       }
     }
 

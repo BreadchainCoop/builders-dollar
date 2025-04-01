@@ -2,22 +2,22 @@
 pragma solidity 0.8.27;
 
 import {IEAS} from '@eas/IEAS.sol';
-import {BuildersDollar} from '@obs-usd-token/BuildersDollar.sol';
+import {BuilderDollar} from '@obs-usd-token/BuilderDollar.sol';
 import {Ownable2StepUpgradeable} from '@oz-upgradeable/access/Ownable2StepUpgradeable.sol';
 import {EIP712Upgradeable} from '@oz-upgradeable/utils/cryptography/EIP712Upgradeable.sol';
-import {IBuildersManager} from 'interfaces/IBuildersManager.sol';
+import {IBuilderManager} from 'interfaces/IBuilderManager.sol';
 import {ISchemaValidator} from 'interfaces/ISchemaValidator.sol';
 
-contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuildersManager {
-  /// @inheritdoc IBuildersManager
+contract BuilderManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilderManager {
+  /// @inheritdoc IBuilderManager
   // solhint-disable-next-line
-  BuildersDollar public TOKEN;
-  /// @inheritdoc IBuildersManager
+  BuilderDollar public TOKEN;
+  /// @inheritdoc IBuilderManager
   // solhint-disable-next-line
   IEAS public EAS;
-  /// @inheritdoc IBuildersManager
+  /// @inheritdoc IBuilderManager
   bytes32 public voterSchema;
-  /// @inheritdoc IBuildersManager
+  /// @inheritdoc IBuilderManager
   bytes32 public projectSchema;
 
   /// @notice Multiplier for fixed-point arithmetic
@@ -25,29 +25,29 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
 
   // --- Data ---
 
-  /// @notice See params @IBuildersManager
+  /// @notice See params @IBuilderManager
   BuilderManagerSettings internal _settings;
 
-  /// @inheritdoc IBuildersManager
+  /// @inheritdoc IBuilderManager
   mapping(bytes32 _schemaUid => address _validator) public schemaToValidator;
-  /// @inheritdoc IBuildersManager
+  /// @inheritdoc IBuilderManager
   mapping(address _attester => bool _isEligible) public optimismFoundationAttester;
-  /// @inheritdoc IBuildersManager
+  /// @inheritdoc IBuilderManager
   mapping(address _voter => bool _isEligibleAndVouched) public eligibleVoter;
-  /// @inheritdoc IBuildersManager
+  /// @inheritdoc IBuilderManager
   mapping(bytes32 _uid => address _project) public eligibleProject;
-  /// @inheritdoc IBuildersManager
+  /// @inheritdoc IBuilderManager
   mapping(address _project => bytes32 _uid) public eligibleProjectByUid;
-  /// @inheritdoc IBuildersManager
+  /// @inheritdoc IBuilderManager
   mapping(address _project => uint256 _expiry) public projectToExpiry;
-  /// @inheritdoc IBuildersManager
+  /// @inheritdoc IBuilderManager
   mapping(address _project => uint256 _totalVouches) public projectToVouches;
-  /// @inheritdoc IBuildersManager
+  /// @inheritdoc IBuilderManager
   mapping(address _voter => mapping(bytes32 _uid => bool _vouched)) public voterToProjectVouch;
 
-  /// @notice See projectToVouchers @IBuildersManager
+  /// @notice See projectToVouchers @IBuilderManager
   mapping(address _project => address[] _vouchers) internal _projectToVouchers;
-  /// @notice See currentProjects @IBuildersManager
+  /// @notice See currentProjects @IBuilderManager
   address[] internal _currentProjects;
 
   // --- Modifiers ---
@@ -71,7 +71,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     _disableInitializers();
   }
 
-  /// @inheritdoc IBuildersManager
+  /// @inheritdoc IBuilderManager
   function initialize(
     address _token,
     address _eas,
@@ -90,7 +90,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     __Ownable_init(_admin);
     __EIP712_init(_name, _version);
 
-    TOKEN = BuildersDollar(_token);
+    TOKEN = BuilderDollar(_token);
     EAS = IEAS(_eas);
     _settings = _s;
     _multiplier = 10 ** TOKEN.decimals();
@@ -102,7 +102,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
   }
 
   /**
-   * @inheritdoc IBuildersManager
+   * @inheritdoc IBuilderManager
    * @dev not `initializable` so deployer can call it after proxy is deployed
    */
   function initializeSchemas(
@@ -121,7 +121,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
 
   // --- External Methods ---
 
-  /// @inheritdoc IBuildersManager
+  /// @inheritdoc IBuilderManager
   function vouch(bytes32 _uid) external {
     if (eligibleProject[_uid] == address(0)) {
       if (!_validateProject(_uid)) revert InvalidProjectUid();
@@ -129,7 +129,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     _vouch(_uid, msg.sender);
   }
 
-  /// @inheritdoc IBuildersManager
+  /// @inheritdoc IBuilderManager
   function vouch(bytes32 _uid, bytes32 _identityAttestation) external {
     if (eligibleProject[_uid] == address(0)) {
       if (!_validateProject(_uid)) revert InvalidProjectUid();
@@ -138,13 +138,13 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     _vouch(_uid, msg.sender);
   }
 
-  /// @inheritdoc IBuildersManager
+  /// @inheritdoc IBuilderManager
   function validateOptimismVoter(bytes32 _identityAttestation) external returns (bool _verified) {
     if (eligibleVoter[msg.sender]) _verified = true;
     else _verified = _validateOptimismVoter(_identityAttestation, msg.sender);
   }
 
-  /// @inheritdoc IBuildersManager
+  /// @inheritdoc IBuilderManager
   function distributeYield() external {
     uint256 _l = _currentProjects.length;
     if (_l == 0) revert YieldNoProjects();
@@ -177,12 +177,12 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     emit YieldDistributed(_yieldPerProject, _currentProjects);
   }
 
-  /// @inheritdoc IBuildersManager
+  /// @inheritdoc IBuilderManager
   function registerSchema(bytes32 _schemaUid, address _validator) external onlyOwner {
     _registerSchema(_schemaUid, _validator);
   }
 
-  /// @inheritdoc IBuildersManager
+  /// @inheritdoc IBuilderManager
   function setSchemaValidator(bytes32 _param, bytes32 _schemaUid) external onlyOwner {
     if (_schemaUid == bytes32(0)) revert ZeroValue();
     if (_param == 'voterSchema') voterSchema = _schemaUid;
@@ -190,7 +190,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     else revert InvalidParameter();
   }
 
-  /// @inheritdoc IBuildersManager
+  /// @inheritdoc IBuilderManager
   function modifyParams(bytes32 _param, uint256 _value) external onlyOwner {
     if (_value == 0) revert ZeroValue();
     if (_param == 'cycleLength') _settings.cycleLength = uint64(_value);
@@ -203,12 +203,12 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     emit ParameterModified(_param, _value);
   }
 
-  /// @inheritdoc IBuildersManager
+  /// @inheritdoc IBuilderManager
   function updateOpFoundationAttester(address _attester, bool _status) external onlyOwner {
     _modifyOpFoundationAttester(_attester, _status);
   }
 
-  /// @inheritdoc IBuildersManager
+  /// @inheritdoc IBuilderManager
   function batchUpdateOpFoundationAttesters(
     address[] memory _attestersToUpdate,
     bool[] memory _statuses
@@ -221,22 +221,22 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     }
   }
 
-  /// @inheritdoc IBuildersManager
+  /// @inheritdoc IBuilderManager
   function settings() external view returns (BuilderManagerSettings memory __settings) {
     __settings = _settings;
   }
 
-  /// @inheritdoc IBuildersManager
+  /// @inheritdoc IBuilderManager
   function projectToVouchers(address _project) external view returns (address[] memory _vouchers) {
     _vouchers = _projectToVouchers[_project];
   }
 
-  /// @inheritdoc IBuildersManager
+  /// @inheritdoc IBuilderManager
   function currentProjects() external view returns (address[] memory _projects) {
     _projects = _currentProjects;
   }
 
-  /// @inheritdoc IBuildersManager
+  /// @inheritdoc IBuilderManager
   function currentProjectUids() external view returns (bytes32[] memory _uids) {
     uint256 _l = _currentProjects.length;
     _uids = new bytes32[](_l);
@@ -245,7 +245,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
     }
   }
 
-  /// @inheritdoc IBuildersManager
+  /// @inheritdoc IBuilderManager
   function optimismFoundationAttesters() external view returns (address[] memory _opAttesters) {
     _opAttesters = _settings.optimismFoundationAttesters;
   }
@@ -335,7 +335,7 @@ contract BuildersManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilder
   }
 
   /**
-   * @notice See updateOpFoundationAttester @IBuildersManager
+   * @notice See updateOpFoundationAttester @IBuilderManager
    * @param _attester The attester address
    * @param _status The attester status
    */

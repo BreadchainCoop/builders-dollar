@@ -4,15 +4,15 @@ pragma solidity 0.8.27;
 import {BaseTest} from './BaseTest.sol';
 import {Initializable} from '@oz-upgradeable/proxy/utils/Initializable.sol';
 import {TransparentUpgradeableProxy} from '@oz/proxy/transparent/TransparentUpgradeableProxy.sol';
-import {BuildersManager, IBuildersManager} from 'contracts/BuildersManager.sol';
+import {BuilderManager, IBuilderManager} from 'contracts/BuilderManager.sol';
 
 contract UnitInitializationTest is BaseTest {
   function test_InitializeWhenPassingValidSettings() external {
     // Deploy implementation
-    BuildersManager implementation = new BuildersManager();
+    BuilderManager implementation = new BuilderManager();
 
     // Create settings
-    IBuildersManager.BuilderManagerSettings memory settings = IBuildersManager.BuilderManagerSettings({
+    IBuilderManager.BuilderManagerSettings memory settings = IBuilderManager.BuilderManagerSettings({
       cycleLength: 30 days,
       lastClaimedTimestamp: uint64(block.timestamp),
       fundingExpiry: uint64(304 days),
@@ -28,15 +28,15 @@ contract UnitInitializationTest is BaseTest {
       address(implementation),
       address(this),
       abi.encodeWithSelector(
-        IBuildersManager.initialize.selector, token, eas, address(this), 'BuildersManager', '1', settings
+        IBuilderManager.initialize.selector, token, eas, address(this), 'BuilderManager', '1', settings
       )
     );
 
-    // Cast proxy to BuildersManager interface
-    IBuildersManager newManager = IBuildersManager(address(proxy));
+    // Cast proxy to BuilderManager interface
+    IBuilderManager newManager = IBuilderManager(address(proxy));
 
     // Verify settings were initialized correctly
-    IBuildersManager.BuilderManagerSettings memory actualSettings = newManager.settings();
+    IBuilderManager.BuilderManagerSettings memory actualSettings = newManager.settings();
     assertEq(actualSettings.cycleLength, settings.cycleLength);
     assertEq(actualSettings.lastClaimedTimestamp, settings.lastClaimedTimestamp);
     assertEq(actualSettings.fundingExpiry, settings.fundingExpiry);
@@ -48,10 +48,10 @@ contract UnitInitializationTest is BaseTest {
 
   function test_InitializeWhenPassingInvalidSettings() external {
     // Deploy implementation
-    BuildersManager implementation = new BuildersManager();
+    BuilderManager implementation = new BuilderManager();
 
     // Create invalid settings (zero cycle length)
-    IBuildersManager.BuilderManagerSettings memory settings = IBuildersManager.BuilderManagerSettings({
+    IBuilderManager.BuilderManagerSettings memory settings = IBuilderManager.BuilderManagerSettings({
       cycleLength: 0, // Invalid cycle length
       lastClaimedTimestamp: uint64(block.timestamp),
       fundingExpiry: uint64(304 days),
@@ -63,12 +63,12 @@ contract UnitInitializationTest is BaseTest {
     settings.optimismFoundationAttesters[0] = address(this);
 
     // Expect revert when deploying proxy with invalid settings
-    vm.expectRevert(IBuildersManager.SettingsNotSet.selector);
+    vm.expectRevert(IBuilderManager.SettingsNotSet.selector);
     new TransparentUpgradeableProxy(
       address(implementation),
       address(this),
       abi.encodeWithSelector(
-        IBuildersManager.initialize.selector, token, eas, address(this), 'BuildersManager', '1', settings
+        IBuilderManager.initialize.selector, token, eas, address(this), 'BuilderManager', '1', settings
       )
     );
   }
@@ -76,13 +76,13 @@ contract UnitInitializationTest is BaseTest {
   function test_Initialize() public {
     // Attempt to reinitialize (should fail)
     vm.expectRevert(Initializable.InvalidInitialization.selector);
-    buildersManager.initialize(
+    builderManager.initialize(
       token,
       eas,
       address(this),
-      'BuildersManager',
+      'BuilderManager',
       '1',
-      IBuildersManager.BuilderManagerSettings({
+      IBuilderManager.BuilderManagerSettings({
         cycleLength: 7 days,
         lastClaimedTimestamp: uint64(block.timestamp),
         fundingExpiry: uint64(304 days),

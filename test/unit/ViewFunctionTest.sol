@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
-import {IBuildersManager} from 'contracts/BuildersManager.sol';
+import {IBuilderManager} from 'contracts/BuilderManager.sol';
 import {BaseTest} from 'test/unit/BaseTest.sol';
 
 contract UnitViewFunctionTest is BaseTest {
   function test_GetSettingsWhenCalled() public {
-    IBuildersManager.BuilderManagerSettings memory expectedSettings = IBuildersManager.BuilderManagerSettings({
+    IBuilderManager.BuilderManagerSettings memory expectedSettings = IBuilderManager.BuilderManagerSettings({
       cycleLength: 7 days,
       lastClaimedTimestamp: uint64(block.timestamp),
       fundingExpiry: uint64(304 days),
@@ -19,7 +19,7 @@ contract UnitViewFunctionTest is BaseTest {
 
     mockSettings(expectedSettings);
 
-    IBuildersManager.BuilderManagerSettings memory actualSettings = buildersManager.settings();
+    IBuilderManager.BuilderManagerSettings memory actualSettings = builderManager.settings();
     assertEq(actualSettings.cycleLength, expectedSettings.cycleLength);
     assertEq(actualSettings.lastClaimedTimestamp, expectedSettings.lastClaimedTimestamp);
     assertEq(actualSettings.fundingExpiry, expectedSettings.fundingExpiry);
@@ -37,7 +37,7 @@ contract UnitViewFunctionTest is BaseTest {
 
     mockCurrentProjects(expectedProjects);
 
-    address[] memory actualProjects = buildersManager.currentProjects();
+    address[] memory actualProjects = builderManager.currentProjects();
     assertEq(actualProjects.length, expectedProjects.length);
     for (uint256 i = 0; i < actualProjects.length; i++) {
       assertEq(actualProjects[i], expectedProjects[i]);
@@ -51,7 +51,7 @@ contract UnitViewFunctionTest is BaseTest {
 
     mockOptimismFoundationAttesters(expectedAttesters);
 
-    address[] memory actualAttesters = buildersManager.optimismFoundationAttesters();
+    address[] memory actualAttesters = builderManager.optimismFoundationAttesters();
     assertEq(actualAttesters.length, expectedAttesters.length);
     for (uint256 i = 0; i < actualAttesters.length; i++) {
       assertEq(actualAttesters[i], expectedAttesters[i]);
@@ -63,11 +63,11 @@ contract UnitViewFunctionTest is BaseTest {
 
     // Test when voter is eligible
     mockEligibleVoter(voter, true);
-    assertTrue(buildersManager.eligibleVoter(voter));
+    assertTrue(builderManager.eligibleVoter(voter));
 
     // Test when voter is not eligible
     mockEligibleVoter(voter, false);
-    assertFalse(buildersManager.eligibleVoter(voter));
+    assertFalse(builderManager.eligibleVoter(voter));
   }
 
   function test_GetEligibleProjectWhenCalled() public {
@@ -76,7 +76,7 @@ contract UnitViewFunctionTest is BaseTest {
 
     mockEligibleProject(projectAttestation, expectedProject);
 
-    address actualProject = buildersManager.eligibleProject(projectAttestation);
+    address actualProject = builderManager.eligibleProject(projectAttestation);
     assertEq(actualProject, expectedProject);
   }
 
@@ -86,12 +86,12 @@ contract UnitViewFunctionTest is BaseTest {
 
     // Mock the call
     vm.mockCall(
-      address(buildersManager),
-      abi.encodeWithSelector(IBuildersManager.eligibleProjectByUid.selector, project),
+      address(builderManager),
+      abi.encodeWithSelector(IBuilderManager.eligibleProjectByUid.selector, project),
       abi.encode(expectedUid)
     );
 
-    bytes32 actualUid = buildersManager.eligibleProjectByUid(project);
+    bytes32 actualUid = builderManager.eligibleProjectByUid(project);
     assertEq(actualUid, expectedUid);
   }
 
@@ -104,12 +104,12 @@ contract UnitViewFunctionTest is BaseTest {
 
     // Mock the call
     vm.mockCall(
-      address(buildersManager),
-      abi.encodeWithSelector(IBuildersManager.projectToVouchers.selector, project),
+      address(builderManager),
+      abi.encodeWithSelector(IBuilderManager.projectToVouchers.selector, project),
       abi.encode(expectedVouchers)
     );
 
-    address[] memory actualVouchers = buildersManager.projectToVouchers(project);
+    address[] memory actualVouchers = builderManager.projectToVouchers(project);
     assertEq(actualVouchers.length, expectedVouchers.length);
     for (uint256 i = 0; i < actualVouchers.length; i++) {
       assertEq(actualVouchers[i], expectedVouchers[i]);

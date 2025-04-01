@@ -1,74 +1,74 @@
-BuildersManager::initialize
+BuilderManager::initialize
 ├── when passing valid settings
 │   ├── it sets the settings
 │   └── it deploys the contract
 └── when passing invalid settings
     └── it reverts with SettingsNotSet
 
-BuildersManager::OP_SCHEMA_638
+BuilderManager::OP_SCHEMA_638
 └── when called
     └── it returns the OP_SCHEMA_638
 
-BuildersManager::TOKEN
+BuilderManager::TOKEN
 └── when called 
     └── it returns the token address
 
-BuildersManager::EAS
+BuilderManager::EAS
 └── when called
     └── it returns the EAS address
 
-BuildersManager::optimismFoundationAttester
+BuilderManager::optimismFoundationAttester
 ├── when the attester is an Optimism Foundation Attester
 │   └── it returns true
 └── when the attester is not an Optimism Foundation Attester
     └── it returns false
 
-BuildersManager::eligibleVoter
+BuilderManager::eligibleVoter
 ├── when the voter is eligible and vouched
 │   └── it returns true
 └── when the voter is not eligible or vouched
     └── it returns false
 
-BuildersManager::eligibleProject
+BuilderManager::eligibleProject
 ├── when the project is eligible
 │   └── it returns the project
 └── when the project is not eligible
     └── it returns address(0)
 
-BuildersManager::projectToExpiry
+BuilderManager::projectToExpiry
 ├── when the project is eligible
 │   └── it returns the expiry
 └── when the project is not eligible
     └── it returns 0
 
-BuildersManager::projectToVouches
+BuilderManager::projectToVouches
 ├── when the project is eligible
 │   └── it returns the vouches
 └── when the project is not eligible
     └── it returns 0
 
-BuildersManager::voterToProjectVouch
+BuilderManager::voterToProjectVouch
 ├── when the voter has vouched for the project
 │   └── it returns true
 └── when the voter has not vouched for the project
     └── it returns false
 
-BuildersManager::settings
+BuilderManager::settings
 └── it returns the settings
 
-BuildersManager::currentProjects
+BuilderManager::currentProjects
 ├── when there are projects
 │   └── it returns the current projects
 └── when there are no projects
     └── it returns an empty array
 
-BuildersManager::optimismFoundationAttesters
+BuilderManager::optimismFoundationAttesters
 ├── when there are attesters
 │   └── it returns the optimism foundation attesters
 └── when there are no attesters
     └── it returns an empty array
 
-BuildersManager::vouch
+BuilderManager::vouch
 ├── when passing valid project attestation
 │   ├── it sets the project as eligible
 │   ├── it emits ProjectValidated
@@ -78,7 +78,7 @@ BuildersManager::vouch
 └── when passing invalid project attestation
     └── it reverts with InvalidProjectAttestation
 
-BuildersManager::vouch
+BuilderManager::vouch
 ├── when passing valid project attestation and valid identity attestation
 │   ├── it sets the project as eligible
 │   ├── it sets the identity as eligible
@@ -90,7 +90,7 @@ BuildersManager::vouch
 └── when passing invalid identity attestation
     └── it reverts with InvalidIdentityAttestation
 
-BuildersManager::validateOptimismVoter
+BuilderManager::validateOptimismVoter
 ├── when passing valid identity attestation
 │   ├── it sets the identity as eligible
 │   ├── it emits VoterValidated
@@ -100,7 +100,7 @@ BuildersManager::validateOptimismVoter
 └── when passing invalid identity attestation
     └── it returns false
 
-BuildersManager::distributeYield
+BuilderManager::distributeYield
 ├── when the cycle is ready
 │   ├── it distributes the yield
 │   └── it emits YieldDistributed
@@ -109,21 +109,21 @@ BuildersManager::distributeYield
 └── when the cycle is not ready
     └── it reverts with CycleNotReady
 
-BuildersManager::modifyParams
+BuilderManager::modifyParams
 ├── when passing valid param and value
 │   ├── it modifies the param
 │   └── it emits ParamsModified
 └── when passing invalid param or value
     └── it reverts with InvalidParam
 
-BuildersManager::updateOpFoundationAttester
+BuilderManager::updateOpFoundationAttester
 ├── when passing valid attester and status
 │   ├── it updates the attester
 │   └── it emits OpFoundationAttesterUpdated
 └── when passing invalid attester or status
     └── it reverts with InvalidAttester
 
-BuildersManager::batchUpdateOpFoundationAttesters
+BuilderManager::batchUpdateOpFoundationAttesters
 ├── when passing valid attesters and statuses
 │   ├── it updates the attesters
 │   └── it emits OpFoundationAttestersUpdated

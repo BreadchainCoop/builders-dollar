@@ -38,10 +38,10 @@ contract IntegrationBase is Deploy, Test {
     _runDeployments(PRODUCTION_ENV);
     vm.stopPrank();
 
-    eas = buildersManager.EAS();
+    eas = builderManager.EAS();
 
-    vm.label(address(buildersManager), 'BUILDERS_MANAGER');
-    vm.label(address(obsUsdToken), 'OBS_USD_TOKEN');
+    vm.label(address(builderManager), 'BUILDERS_MANAGER');
+    vm.label(address(obUsdToken), 'OBS_USD_TOKEN');
     vm.label(address(eas), 'EAS');
     vm.label(owner, 'OWNER');
   }

@@ -7,16 +7,16 @@ import {IntegrationBase} from 'test/integration/IntegrationBase.sol';
 
 contract IntegrationDeploy is IntegrationBase {
   function test_OBSUSD_Bytecode() public view {
-    assertGt(address(obsUsdToken).code.length, 0);
+    assertGt(address(obUsdToken).code.length, 0);
   }
 
   function test_BuildersManager_Bytecode() public view {
-    assertGt(address(buildersManager).code.length, 0);
+    assertGt(address(builderManager).code.length, 0);
   }
 
   function test_Ownable() public view {
-    assertEq(Ownable(address(obsUsdToken)).owner(), initialOwner);
-    assertEq(Ownable(address(buildersManager)).owner(), initialOwner);
-    assertEq(Ownable2StepUpgradeable(address(buildersManager)).pendingOwner(), address(0));
+    assertEq(Ownable(address(obUsdToken)).owner(), initialOwner);
+    assertEq(Ownable(address(builderManager)).owner(), initialOwner);
+    assertEq(Ownable2StepUpgradeable(address(builderManager)).pendingOwner(), address(0));
   }
 }

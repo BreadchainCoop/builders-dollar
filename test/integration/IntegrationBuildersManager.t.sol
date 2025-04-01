@@ -4,7 +4,7 @@ pragma solidity 0.8.27;
 import {IPool} from '@aave-core-v3/interfaces/IPool.sol';
 import {Attestation, EMPTY_UID} from '@eas/Common.sol';
 import {ERC20} from '@oz/token/ERC20/ERC20.sol';
-import {IBuildersManager} from 'interfaces/IBuildersManager.sol';
+import {IBuilderManager} from 'interfaces/IBuilderManager.sol';
 import {
   OP_AAVE_V3_POOL,
   OP_A_USDC,
@@ -82,12 +82,12 @@ contract IntegrationBuildersManager is IntegrationBase {
     identityAtt2 = eas.getAttestation(OP_SCHEMA_UID_599_2);
     identityAtt3 = eas.getAttestation(OP_SCHEMA_UID_599_3);
 
-    // Verify obsUsdToken matches the token in BuildersManager
-    assertEq(address(obsUsdToken), address(buildersManager.TOKEN()));
+    // Verify obUsdToken matches the token in BuilderManager
+    assertEq(address(obUsdToken), address(builderManager.TOKEN()));
 
-    // Set BuildersManager as the yield claimer for obsUsdToken
+    // Set BuilderManager as the yield claimer for obUsdToken
     vm.startPrank(owner);
-    obsUsdToken.setYieldClaimer(address(buildersManager));
+    obUsdToken.setYieldClaimer(address(builderManager));
     vm.stopPrank();
 
     // Deal some ETH to the borrower
@@ -101,8 +101,8 @@ contract IntegrationBuildersManager is IntegrationBase {
     _vouchWithIdentity(identityAtt0.recipient, OP_SCHEMA_UID_638_0, OP_SCHEMA_UID_599_0);
 
     // Verify project is properly registered
-    assertEq(buildersManager.eligibleProject(OP_SCHEMA_UID_638_0), projectAtt.recipient);
-    assertEq(buildersManager.eligibleProjectByUid(projectAtt.recipient), OP_SCHEMA_UID_638_0);
+    assertEq(builderManager.eligibleProject(OP_SCHEMA_UID_638_0), projectAtt.recipient);
+    assertEq(builderManager.eligibleProjectByUid(projectAtt.recipient), OP_SCHEMA_UID_638_0);
   }
 
   // === Voter Attestation Tests ===
@@ -110,13 +110,13 @@ contract IntegrationBuildersManager is IntegrationBase {
   function test_VoterAttestationValidation() public {
     // Test Guest voter
     vm.prank(identityAtt0.recipient);
-    assertTrue(buildersManager.validateOptimismVoter(OP_SCHEMA_UID_599_0));
-    assertTrue(buildersManager.eligibleVoter(identityAtt0.recipient));
+    assertTrue(builderManager.validateOptimismVoter(OP_SCHEMA_UID_599_0));
+    assertTrue(builderManager.eligibleVoter(identityAtt0.recipient));
 
     // Test Citizen voter
     vm.prank(identityAtt1.recipient);
-    assertTrue(buildersManager.validateOptimismVoter(OP_SCHEMA_UID_599_1));
-    assertTrue(buildersManager.eligibleVoter(identityAtt1.recipient));
+    assertTrue(builderManager.validateOptimismVoter(OP_SCHEMA_UID_599_1));
+    assertTrue(builderManager.eligibleVoter(identityAtt1.recipient));
   }
 
   function test_RevertOnInvalidVoterType() public {
@@ -143,8 +143,8 @@ contract IntegrationBuildersManager is IntegrationBase {
     );
 
     // Should return false for invalid voter type
-    assertFalse(buildersManager.validateOptimismVoter(invalidAttestation.uid));
-    assertFalse(buildersManager.eligibleVoter(address(this)));
+    assertFalse(builderManager.validateOptimismVoter(invalidAttestation.uid));
+    assertFalse(builderManager.eligibleVoter(address(this)));
   }
 
   // === Vouching System Tests ===
@@ -153,10 +153,10 @@ contract IntegrationBuildersManager is IntegrationBase {
     _getThreeVouches();
 
     // Verify project reached minimum vouches
-    assertEq(buildersManager.projectToVouches(projectAtt.recipient), MIN_VOUCHES);
+    assertEq(builderManager.projectToVouches(projectAtt.recipient), MIN_VOUCHES);
 
     // Verify project is in current projects list
-    address[] memory currentProjects = buildersManager.currentProjects();
+    address[] memory currentProjects = builderManager.currentProjects();
     assertEq(currentProjects[0], projectAtt.recipient);
   }
 
@@ -168,14 +168,14 @@ contract IntegrationBuildersManager is IntegrationBase {
     _vouchWithIdentity(identityAtt1.recipient, OP_SCHEMA_UID_638_0, OP_SCHEMA_UID_599_1);
 
     // Third vouch should fail (already verified)
-    vm.expectRevert(IBuildersManager.AlreadyVerified.selector);
+    vm.expectRevert(IBuilderManager.AlreadyVerified.selector);
     vm.prank(identityAtt1.recipient);
-    buildersManager.vouch(OP_SCHEMA_UID_638_0, OP_SCHEMA_UID_599_1);
+    builderManager.vouch(OP_SCHEMA_UID_638_0, OP_SCHEMA_UID_599_1);
 
     // Fourth vouch should fail (already vouched)
-    vm.expectRevert(IBuildersManager.AlreadyVouched.selector);
+    vm.expectRevert(IBuilderManager.AlreadyVouched.selector);
     vm.prank(identityAtt1.recipient);
-    buildersManager.vouch(OP_SCHEMA_UID_638_0);
+    builderManager.vouch(OP_SCHEMA_UID_638_0);
   }
 
   // === Yield Distribution Tests ===
@@ -184,12 +184,12 @@ contract IntegrationBuildersManager is IntegrationBase {
     _getThreeVouches();
 
     // Verify project is correctly registered
-    assertEq(buildersManager.projectToVouches(projectAtt.recipient), MIN_VOUCHES);
-    assertEq(buildersManager.currentProjects().length, 1);
-    assertEq(buildersManager.currentProjects()[0], projectAtt.recipient);
+    assertEq(builderManager.projectToVouches(projectAtt.recipient), MIN_VOUCHES);
+    assertEq(builderManager.currentProjects().length, 1);
+    assertEq(builderManager.currentProjects()[0], projectAtt.recipient);
 
     // Get initial balances - this may revert on forked networks
-    uint256 initialAUsdcBalance = aUSDC.balanceOf(address(obsUsdToken));
+    uint256 initialAUsdcBalance = aUSDC.balanceOf(address(obUsdToken));
     // First get some USDC for the owner and mint obsUSD to generate yield on
     address usdcWhale = makeAddr('usdcWhale');
     vm.label(usdcWhale, 'USDC_WHALE');
@@ -203,8 +203,8 @@ contract IntegrationBuildersManager is IntegrationBase {
 
     // Now mint obsUSD
     vm.startPrank(owner);
-    ERC20(OP_USDC).approve(address(obsUsdToken), BORROW_AMOUNT);
-    obsUsdToken.mint(BORROW_AMOUNT, address(obsUsdToken));
+    ERC20(OP_USDC).approve(address(obUsdToken), BORROW_AMOUNT);
+    obUsdToken.mint(BORROW_AMOUNT, address(obUsdToken));
     vm.stopPrank();
 
     vm.startPrank(borrower);
@@ -232,26 +232,26 @@ contract IntegrationBuildersManager is IntegrationBase {
     vm.warp(block.timestamp + CYCLE_LENGTH);
 
     // Verify yield has accrued
-    uint256 yieldAccrued = obsUsdToken.yieldAccrued();
+    uint256 yieldAccrued = obUsdToken.yieldAccrued();
     assertTrue(yieldAccrued > 0, 'No yield accrued');
 
     // Distribute yield
     vm.prank(owner);
-    buildersManager.distributeYield();
+    builderManager.distributeYield();
 
     // Verify distribution
-    assertEq(buildersManager.currentProjects().length, 1);
-    assertEq(buildersManager.currentProjects()[0], projectAtt.recipient);
+    assertEq(builderManager.currentProjects().length, 1);
+    assertEq(builderManager.currentProjects()[0], projectAtt.recipient);
 
     // Verify project received yield by checking aUSDC balance increased
-    uint256 finalAUsdcBalance = aUSDC.balanceOf(address(obsUsdToken));
+    uint256 finalAUsdcBalance = aUSDC.balanceOf(address(obUsdToken));
     assertGt(finalAUsdcBalance, initialAUsdcBalance, 'No yield was distributed');
     emit log_named_string('Integration test with Aave passed', 'Success');
   }
 
   function test_aDAI_yield_accumulation() public {
     // Track initial balances
-    uint256 initialAUsdcBalance = aUSDC.balanceOf(address(obsUsdToken));
+    uint256 initialAUsdcBalance = aUSDC.balanceOf(address(obUsdToken));
 
     // Get USDC by borrowing against ETH
     vm.startPrank(borrower);
@@ -264,14 +264,14 @@ contract IntegrationBuildersManager is IntegrationBase {
 
     // Owner mints obsUSD with USDC
     vm.startPrank(owner);
-    ERC20(OP_USDC).approve(address(obsUsdToken), BORROW_AMOUNT);
-    obsUsdToken.mint(BORROW_AMOUNT, address(obsUsdToken));
+    ERC20(OP_USDC).approve(address(obUsdToken), BORROW_AMOUNT);
+    obUsdToken.mint(BORROW_AMOUNT, address(obUsdToken));
     vm.stopPrank();
 
     // Verify initial state
-    uint256 obsUsdSupply = obsUsdToken.totalSupply();
+    uint256 obsUsdSupply = obUsdToken.totalSupply();
     assertEq(obsUsdSupply, BORROW_AMOUNT, 'Initial obsUSD supply should match minted amount');
-    uint256 currentAUsdcBalance = aUSDC.balanceOf(address(obsUsdToken));
+    uint256 currentAUsdcBalance = aUSDC.balanceOf(address(obUsdToken));
     assertGt(currentAUsdcBalance, initialAUsdcBalance, 'aUSDC balance should increase after minting');
     assertApproxEqRel(currentAUsdcBalance, obsUsdSupply, 100, 'aUSDC balance should match obsUSD supply initially');
 
@@ -297,11 +297,11 @@ contract IntegrationBuildersManager is IntegrationBase {
     vm.warp(block.timestamp + 1 days);
 
     // Check final state
-    uint256 finalAUsdcBalance = aUSDC.balanceOf(address(obsUsdToken));
+    uint256 finalAUsdcBalance = aUSDC.balanceOf(address(obUsdToken));
     assertGt(finalAUsdcBalance, currentAUsdcBalance, 'aUSDC balance should increase from yield');
 
     // The yield should be the difference between aUSDC balance and obsUSD supply
-    uint256 yieldAccrued = obsUsdToken.yieldAccrued();
+    uint256 yieldAccrued = obUsdToken.yieldAccrued();
     assertGt(yieldAccrued, 0, 'Should have accrued yield');
     assertApproxEqRel(yieldAccrued, finalAUsdcBalance - obsUsdSupply, 10, 'Yield calculation should match aUSDC growth');
 
@@ -318,20 +318,20 @@ contract IntegrationBuildersManager is IntegrationBase {
   /// @notice Helper function to vouch for a project with a specific identity attestation
   function _vouchWithIdentity(address voter, bytes32 projectUid, bytes32 identityUid) internal returns (bool success) {
     vm.prank(voter);
-    buildersManager.vouch(projectUid, identityUid);
-    success = buildersManager.voterToProjectVouch(voter, projectUid);
+    builderManager.vouch(projectUid, identityUid);
+    success = builderManager.voterToProjectVouch(voter, projectUid);
   }
 
   /// @notice Helper function to get all three vouches for a project
   function _getThreeVouches() internal {
     // First vouch
     vm.prank(identityAtt0.recipient);
-    buildersManager.vouch(OP_SCHEMA_UID_638_0, OP_SCHEMA_UID_599_0);
+    builderManager.vouch(OP_SCHEMA_UID_638_0, OP_SCHEMA_UID_599_0);
     // Second vouch
     vm.prank(identityAtt1.recipient);
-    buildersManager.vouch(OP_SCHEMA_UID_638_0, OP_SCHEMA_UID_599_1);
+    builderManager.vouch(OP_SCHEMA_UID_638_0, OP_SCHEMA_UID_599_1);
     // Third vouch
     vm.prank(identityAtt2.recipient);
-    buildersManager.vouch(OP_SCHEMA_UID_638_0, OP_SCHEMA_UID_599_2);
+    builderManager.vouch(OP_SCHEMA_UID_638_0, OP_SCHEMA_UID_599_2);
   }
 }

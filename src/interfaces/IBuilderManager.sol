@@ -2,14 +2,14 @@
 pragma solidity 0.8.27;
 
 import {IEAS} from '@eas/IEAS.sol';
-import {BuildersDollar} from '@obs-usd-token/BuildersDollar.sol';
+import {BuilderDollar} from '@obs-usd-token/BuilderDollar.sol';
 
 /**
- * @title BuildersManager Contract
+ * @title BuilderManager Contract
  * @author Breadchain
  * @notice This contract manages the OP Foundation project voting and yield distribution
  */
-interface IBuildersManager {
+interface IBuilderManager {
   /*///////////////////////////////////////////////////////////////
                             STRUCTS
     //////////////////////////////////////////////////////////////*/
@@ -123,8 +123,8 @@ interface IBuildersManager {
                             LOGIC
     //////////////////////////////////////////////////////////////*/
   /**
-   * @notice Initialize the BuildersManager contract
-   * @param _token The BuildersDollar token address
+   * @notice Initialize the BuilderManager contract
+   * @param _token The BuilderDollar token address
    * @param _eas The Ethereum-Attestation-Service (EAS) contract address
    * @param _admin The admin address
    * @param _name The human-readable name of the signing domain (i.e. the name the protocol)
@@ -229,7 +229,7 @@ interface IBuildersManager {
    * @return _builderToken The Builder Token
    */
   // solhint-disable-next-line func-name-mixedcase
-  function TOKEN() external view returns (BuildersDollar _builderToken);
+  function TOKEN() external view returns (BuilderDollar _builderToken);
 
   /**
    * @notice Get the Ethereum-Attestation-Service (EAS) contract

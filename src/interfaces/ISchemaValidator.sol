@@ -2,11 +2,11 @@
 pragma solidity 0.8.27;
 
 import {IEAS} from '@eas/IEAS.sol';
-import {IBuildersManager} from 'interfaces/IBuildersManager.sol';
+import {IBuilderManager} from 'interfaces/IBuilderManager.sol';
 
 /**
  * @title ISchemaValidator
- * @notice Interface for the SchemaValidatorBase contract for use with the BuildersManager contract
+ * @notice Interface for the SchemaValidatorBase contract for use with the BuilderManager contract
  */
 interface ISchemaValidator {
   /*///////////////////////////////////////////////////////////////
@@ -45,11 +45,11 @@ interface ISchemaValidator {
   function SCHEMA() external view returns (bytes32 _schema);
 
   /**
-   * @notice Get the BuildersManager contract
-   * @return _buildersManager The BuildersManager contract
+   * @notice Get the BuilderManager contract
+   * @return _buildersManager The BuilderManager contract
    */
   // solhint-disable-next-line func-name-mixedcase
-  function BUILDERS_MANAGER() external view returns (IBuildersManager _buildersManager);
+  function BUILDERS_MANAGER() external view returns (IBuilderManager _buildersManager);
 
   /**
    * @notice Get the Ethereum-Attestation-Service (EAS) contract

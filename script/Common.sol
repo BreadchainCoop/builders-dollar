@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
-import {BuildersDollar} from '@obs-usd-token/BuildersDollar.sol';
+import {BuilderDollar} from '@obs-usd-token/BuilderDollar.sol';
 import {EIP173ProxyWithReceive} from '@obs-usd-token/vendor/EIP173ProxyWithReceive.sol';
 import {TransparentUpgradeableProxy} from '@oz/proxy/transparent/TransparentUpgradeableProxy.sol';
-import {BuildersManager, IBuildersManager} from 'contracts/BuildersManager.sol';
+import {BuilderManager, IBuilderManager} from 'contracts/BuilderManager.sol';
 import {SchemaValidator599} from 'contracts/schemas/SchemaValidator599.sol';
 import {SchemaValidator638} from 'contracts/schemas/SchemaValidator638.sol';
 import {Script} from 'forge-std/Script.sol';
@@ -17,8 +17,6 @@ import {
   ANVIL_FOUNDATION_ATTESTER_1,
   ANVIL_FOUNDATION_ATTESTER_2,
   BUILDERS_MANAGER_NAME,
-  OBSUSD_NAME,
-  OBSUSD_SYMBOL,
   OPTIMISM_CHAIN_ID,
   OP_AAVE_V3_INCENTIVES,
   OP_AAVE_V3_POOL,
@@ -36,24 +34,26 @@ import {
   OP_SEASON_START,
   OP_USDC,
   TEST_BUILDERS_MANAGER_NAME,
-  TEST_OBSUSD_NAME,
-  TEST_OBSUSD_SYMBOL,
   TEST_OP_CYCLE_LENGTH,
   TEST_OP_FUNDING_EXPIRY,
   TEST_OP_MIN_VOUCHES,
   TEST_OP_SEASON_DURATION,
-  TEST_OP_SEASON_START
+  TEST_OP_SEASON_START,
+  TEST_obUSD_NAME,
+  TEST_obUSD_SYMBOL,
+  obUSD_NAME,
+  obUSD_SYMBOL
 } from 'script/Constants.sol';
 
 struct DeploymentParams {
-  /// @dev BuildersManager settings
-  address token; // BuildersDollar token address
+  /// @dev BuilderManager settings
+  address token; // BuilderDollar token address
   address eas; // Ethereum Attestation Service address
   address admin; // Admin address
   string name; // Contract name for EIP712
   string version; // Contract version for EIP712
-  IBuildersManager.BuilderManagerSettings settings; // Settings struct
-  /// @dev BuildersDollar settings
+  IBuilderManager.BuilderManagerSettings settings; // Settings struct
+  /// @dev BuilderDollar settings
   address underlyingAsset; // Underlying asset address
   address aToken; // aToken address
   address aaveV3Pool; // Aave V3 pool address
@@ -65,14 +65,14 @@ struct DeploymentParams {
 /**
  * @title Common Contract
  * @author Breadchain
- * @notice This contract is used to deploy the BuildersManager contract
+ * @notice This contract is used to deploy the BuilderManager contract
  * @dev This contract is intended for use in Scripts and Integration Tests
  */
 contract Common is Script {
-  /// @notice BuildersManager contract
-  IBuildersManager public buildersManager;
-  /// @notice BuildersDollar contract
-  BuildersDollar public obsUsdToken;
+  /// @notice BuilderManager contract
+  IBuilderManager public builderManager;
+  /// @notice BuilderDollar contract
+  BuilderDollar public obUsdToken;
 
   /// @notice initialOwner address will be the owner of the proxy
   address public initialOwner;
@@ -88,13 +88,13 @@ contract Common is Script {
 
     // Optimism Deployment Params for Production Deployments
     _deploymentParams[OPTIMISM_CHAIN_ID][true] = DeploymentParams({
-      /// @dev BuildersManager settings
-      token: address(obsUsdToken),
+      /// @dev BuilderManager settings
+      token: address(obUsdToken),
       eas: OP_EAS,
       name: BUILDERS_MANAGER_NAME,
       admin: OP_BREAD_COOP,
       version: '1',
-      settings: IBuildersManager.BuilderManagerSettings({
+      settings: IBuilderManager.BuilderManagerSettings({
         cycleLength: uint64(OP_CYCLE_LENGTH),
         lastClaimedTimestamp: uint64(block.timestamp),
         fundingExpiry: uint64(OP_FUNDING_EXPIRY),
@@ -103,24 +103,24 @@ contract Common is Script {
         minVouches: OP_MIN_VOUCHES,
         optimismFoundationAttesters: _opAttesters
       }),
-      /// @dev BuildersDollar settings
+      /// @dev BuilderDollar settings
       underlyingAsset: OP_USDC,
       aToken: OP_A_USDC,
       aaveV3Pool: OP_AAVE_V3_POOL,
       aaveV3Incentives: OP_AAVE_V3_INCENTIVES,
-      tokenName: OBSUSD_NAME,
-      tokenSymbol: OBSUSD_SYMBOL
+      tokenName: obUSD_NAME,
+      tokenSymbol: obUSD_SYMBOL
     });
 
     // Optimism Deployment Params for Integration Tests
     _deploymentParams[OPTIMISM_CHAIN_ID][false] = DeploymentParams({
-      /// @dev BuildersManager settings
-      token: address(obsUsdToken),
+      /// @dev BuilderManager settings
+      token: address(obUsdToken),
       eas: OP_EAS,
       name: TEST_BUILDERS_MANAGER_NAME,
       admin: OP_BREAD_COOP,
       version: '1',
-      settings: IBuildersManager.BuilderManagerSettings({
+      settings: IBuilderManager.BuilderManagerSettings({
         cycleLength: uint64(TEST_OP_CYCLE_LENGTH),
         lastClaimedTimestamp: uint64(block.timestamp),
         fundingExpiry: uint64(TEST_OP_FUNDING_EXPIRY),
@@ -129,13 +129,13 @@ contract Common is Script {
         minVouches: TEST_OP_MIN_VOUCHES,
         optimismFoundationAttesters: _opAttesters
       }),
-      /// @dev BuildersDollar settings
+      /// @dev BuilderDollar settings
       underlyingAsset: OP_USDC,
       aToken: OP_A_USDC,
       aaveV3Pool: OP_AAVE_V3_POOL,
       aaveV3Incentives: OP_AAVE_V3_INCENTIVES,
-      tokenName: TEST_OBSUSD_NAME,
-      tokenSymbol: TEST_OBSUSD_SYMBOL
+      tokenName: TEST_obUSD_NAME,
+      tokenSymbol: TEST_obUSD_SYMBOL
     });
 
     // Anvil Deployment Params for Unit Tests
@@ -145,13 +145,13 @@ contract Common is Script {
     _anvilAttesters[2] = ANVIL_FOUNDATION_ATTESTER_2;
 
     _deploymentParams[ANVIL_CHAIN_ID][true] = DeploymentParams({
-      /// @dev BuildersManager settings
+      /// @dev BuilderManager settings
       token: ANVIL_BUILDERS_DOLLAR,
       eas: ANVIL_EAS,
       admin: OP_BREAD_COOP,
       name: BUILDERS_MANAGER_NAME,
       version: '1',
-      settings: IBuildersManager.BuilderManagerSettings({
+      settings: IBuilderManager.BuilderManagerSettings({
         cycleLength: uint64(OP_CYCLE_LENGTH),
         lastClaimedTimestamp: uint64(block.timestamp),
         fundingExpiry: uint64(OP_FUNDING_EXPIRY),
@@ -160,33 +160,33 @@ contract Common is Script {
         minVouches: OP_MIN_VOUCHES,
         optimismFoundationAttesters: _anvilAttesters
       }),
-      /// @dev BuildersDollar settings
+      /// @dev BuilderDollar settings
       underlyingAsset: OP_USDC,
       aToken: OP_A_USDC,
       aaveV3Pool: OP_AAVE_V3_POOL,
       aaveV3Incentives: OP_AAVE_V3_INCENTIVES,
-      tokenName: OBSUSD_NAME,
-      tokenSymbol: OBSUSD_SYMBOL
+      tokenName: obUSD_NAME,
+      tokenSymbol: obUSD_SYMBOL
     });
   }
 
   function _runDeployments(bool _isProduction) internal {
-    obsUsdToken = BuildersDollar(_deployBuildersDollar(_isProduction));
-    _deploymentParams[block.chainid][_isProduction].token = address(obsUsdToken);
-    buildersManager = IBuildersManager(_deployBuildersManager(_isProduction));
-    buildersManager.initializeSchemas(
+    obUsdToken = BuilderDollar(_deployBuildersDollar(_isProduction));
+    _deploymentParams[block.chainid][_isProduction].token = address(obUsdToken);
+    builderManager = IBuilderManager(_deployBuildersManager(_isProduction));
+    builderManager.initializeSchemas(
       OP_SCHEMA_599, address(_deploySchemaValidator599()), OP_SCHEMA_638, address(_deploySchemaValidator638())
     );
-    obsUsdToken.initializeYieldClaimer(address(buildersManager));
+    obUsdToken.initializeYieldClaimer(address(builderManager));
 
-    console.log('BuildersManager deployed', address(buildersManager));
-    console.log('BuildersDollar  deployed', address(obsUsdToken));
+    console.log('BuilderManager deployed', address(builderManager));
+    console.log('BuilderDollar  deployed', address(obUsdToken));
     console.log('Initial  owner  set   to', initialOwner);
     console.log('Deployment complete');
   }
 
   function _deployBuildersManagerImp() internal returns (address _buildersManagerImp) {
-    _buildersManagerImp = address(new BuildersManager());
+    _buildersManagerImp = address(new BuilderManager());
   }
 
   function _deployBuildersManager(bool _isProduction) internal returns (address _buildersManagerProxy) {
@@ -199,27 +199,27 @@ contract Common is Script {
         _implementation,
         initialOwner,
         abi.encodeWithSelector(
-          IBuildersManager.initialize.selector, _s.token, _s.eas, _s.admin, _s.name, _s.version, _s.settings
+          IBuilderManager.initialize.selector, _s.token, _s.eas, _s.admin, _s.name, _s.version, _s.settings
         )
       )
     );
   }
 
-  function _deployBuildersDollarImp() internal returns (address _obsUsdTokenImp) {
-    _obsUsdTokenImp = address(new BuildersDollar());
+  function _deployBuildersDollarImp() internal returns (address _obUsdTokenImp) {
+    _obUsdTokenImp = address(new BuilderDollar());
   }
 
-  function _deployBuildersDollar(bool _isProduction) internal returns (address _obsUsdTokenProxy) {
+  function _deployBuildersDollar(bool _isProduction) internal returns (address _obUsdTokenProxy) {
     address _implementation = _deployBuildersDollarImp();
 
     DeploymentParams memory _s = _deploymentParams[block.chainid][_isProduction];
 
-    _obsUsdTokenProxy = address(
+    _obUsdTokenProxy = address(
       new EIP173ProxyWithReceive(
         _implementation,
         initialOwner,
         abi.encodeWithSelector(
-          BuildersDollar.initialize.selector,
+          BuilderDollar.initialize.selector,
           _s.admin,
           _s.underlyingAsset,
           _s.aToken,
@@ -233,10 +233,10 @@ contract Common is Script {
   }
 
   function _deploySchemaValidator599() internal returns (address _schemaValidatorProxy) {
-    _schemaValidatorProxy = address(new SchemaValidator599(OP_SCHEMA_599, address(buildersManager)));
+    _schemaValidatorProxy = address(new SchemaValidator599(OP_SCHEMA_599, address(builderManager)));
   }
 
   function _deploySchemaValidator638() internal returns (address _schemaValidatorProxy) {
-    _schemaValidatorProxy = address(new SchemaValidator638(OP_SCHEMA_638, address(buildersManager)));
+    _schemaValidatorProxy = address(new SchemaValidator638(OP_SCHEMA_638, address(builderManager)));
   }
 }

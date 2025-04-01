@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
-import {IBuildersManager} from 'contracts/BuildersManager.sol';
+import {IBuilderManager} from 'contracts/BuilderManager.sol';
 import {BaseTest} from 'test/unit/BaseTest.sol';
 
 contract UnitYieldTest is BaseTest {
@@ -23,8 +23,8 @@ contract UnitYieldTest is BaseTest {
   //   // Setup token operations
   //   _setupTokenOperations(projects, 1000 ether);
 
-  //   vm.expectRevert(IBuildersManager.CycleNotReady.selector);
-  //   buildersManager.distributeYield();
+  //   vm.expectRevert(IBuilderManager.CycleNotReady.selector);
+  //   builderManager.distributeYield();
   // }
 
   function test_DistributeYieldWhenNoProjects() public {
@@ -37,8 +37,8 @@ contract UnitYieldTest is BaseTest {
     address[] memory emptyProjects = new address[](0);
     mockCurrentProjects(emptyProjects);
 
-    vm.expectRevert(IBuildersManager.YieldNoProjects.selector);
-    buildersManager.distributeYield();
+    vm.expectRevert(IBuilderManager.YieldNoProjects.selector);
+    builderManager.distributeYield();
   }
 
   function test_DistributeYieldWhenSeasonExpired() public {
@@ -53,14 +53,14 @@ contract UnitYieldTest is BaseTest {
     // Setup token operations
     _setupTokenOperations(projects, 1000 ether);
 
-    vm.expectRevert(IBuildersManager.YieldNoProjects.selector);
-    buildersManager.distributeYield();
+    vm.expectRevert(IBuilderManager.YieldNoProjects.selector);
+    builderManager.distributeYield();
   }
 
   // --- Internal Helpers ---
 
   function _setupSettings(uint64 _lastClaimedTimestamp, uint64 _seasonStart) internal {
-    IBuildersManager.BuilderManagerSettings memory _settings = IBuildersManager.BuilderManagerSettings({
+    IBuilderManager.BuilderManagerSettings memory _settings = IBuilderManager.BuilderManagerSettings({
       cycleLength: CYCLE_LENGTH,
       lastClaimedTimestamp: _lastClaimedTimestamp,
       fundingExpiry: uint64(304 days),
@@ -74,15 +74,15 @@ contract UnitYieldTest is BaseTest {
 
     // Set lastClaimedTimestamp directly in storage
     bytes32 _settingsSlot = bytes32(uint256(4));
-    bytes32 _currentValue = vm.load(address(buildersManager), _settingsSlot);
+    bytes32 _currentValue = vm.load(address(builderManager), _settingsSlot);
     bytes32 _clearedValue = bytes32(uint256(_currentValue) & 0xFFFFFFFFFFFFFFFF);
     bytes32 _newValue = bytes32(uint256(_clearedValue) | (uint256(_lastClaimedTimestamp) << 64));
-    vm.store(address(buildersManager), _settingsSlot, _newValue);
+    vm.store(address(builderManager), _settingsSlot, _newValue);
   }
 
   /**
-   * @notice storage layout of BuildersManager
-   * Storage slots in BuildersManager:
+   * @notice storage layout of BuilderManager
+   * Storage slots in BuilderManager:
    * slot 0: TOKEN (address)
    * slot 1: EAS (address)
    * slot 2: voterSchema (bytes32)
@@ -111,18 +111,18 @@ contract UnitYieldTest is BaseTest {
 
     // Setup array storage for _currentProjects
     bytes32 _slot = bytes32(uint256(17));
-    vm.store(address(buildersManager), _slot, bytes32(_count));
+    vm.store(address(builderManager), _slot, bytes32(_count));
     bytes32 _arrayStartSlot = keccak256(abi.encodePacked(_slot));
 
     for (uint256 i = 0; i < _count; i++) {
       // Store project address in _currentProjects array
       bytes32 _itemSlot = bytes32(uint256(_arrayStartSlot) + i);
       bytes32 _itemValue = bytes32(uint256(uint160(_projects[i])));
-      vm.store(address(buildersManager), _itemSlot, _itemValue);
+      vm.store(address(builderManager), _itemSlot, _itemValue);
 
       // Store project expiry in projectToExpiry mapping (slot 13)
       bytes32 _expirySlot = keccak256(abi.encode(_projects[i], uint256(13)));
-      vm.store(address(buildersManager), _expirySlot, bytes32(uint256(_expiryTime)));
+      vm.store(address(builderManager), _expirySlot, bytes32(uint256(_expiryTime)));
 
       // Setup attestations and vouches
       bytes32 _projectUid = bytes32(uint256(i + 1)); // Use simple incremental UIDs
@@ -130,15 +130,15 @@ contract UnitYieldTest is BaseTest {
 
       // Mock the project to UID mapping
       vm.mockCall(
-        address(buildersManager),
-        abi.encodeWithSelector(IBuildersManager.eligibleProjectByUid.selector, _projects[i]),
+        address(builderManager),
+        abi.encodeWithSelector(IBuilderManager.eligibleProjectByUid.selector, _projects[i]),
         abi.encode(_projectUid)
       );
 
       // Mock the vouches count
       vm.mockCall(
-        address(buildersManager),
-        abi.encodeWithSelector(IBuildersManager.projectToVouches.selector, _projects[i]),
+        address(builderManager),
+        abi.encodeWithSelector(IBuilderManager.projectToVouches.selector, _projects[i]),
         abi.encode(MIN_VOUCHES)
       );
     }
@@ -151,7 +151,7 @@ contract UnitYieldTest is BaseTest {
     _yieldPerProject = _yieldAmount / _projects.length;
     _mockTokenOperations(_yieldAmount, _projects);
     vm.mockCall(
-      address(buildersManager), abi.encodeWithSelector(IBuildersManager.currentProjects.selector), abi.encode(_projects)
+      address(builderManager), abi.encodeWithSelector(IBuilderManager.currentProjects.selector), abi.encode(_projects)
     );
   }
 }

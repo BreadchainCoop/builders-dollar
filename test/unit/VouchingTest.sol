@@ -2,7 +2,7 @@
 pragma solidity 0.8.27;
 
 import {Attestation} from '@eas/Common.sol';
-import {IBuildersManager} from 'contracts/BuildersManager.sol';
+import {IBuilderManager} from 'contracts/BuilderManager.sol';
 import {OP_SCHEMA_638} from 'script/Constants.sol';
 import {BaseTest} from 'test/unit/BaseTest.sol';
 
@@ -14,7 +14,7 @@ contract UnitVouchingTest is BaseTest {
   function test_VouchWhenProjectAndIdentityAttestationsAreValid() public {
     // Setup voter attestation
     _setupVoterAttestation();
-    buildersManager.validateOptimismVoter(identityAttestation);
+    builderManager.validateOptimismVoter(identityAttestation);
 
     // Setup project attestation
     bytes memory attestationData = abi.encode(projectRefId, '');
@@ -25,19 +25,19 @@ contract UnitVouchingTest is BaseTest {
 
     // Expect events
     vm.expectEmit(true, true, true, true);
-    emit IBuildersManager.ProjectValidated(projectAttestation, project);
+    emit IBuilderManager.ProjectValidated(projectAttestation, project);
 
     vm.expectEmit(true, true, true, true);
-    emit IBuildersManager.VouchRecorded(address(this), project, projectAttestation);
+    emit IBuilderManager.VouchRecorded(address(this), project, projectAttestation);
 
     // Vouch for project
-    buildersManager.vouch(projectAttestation);
+    builderManager.vouch(projectAttestation);
   }
 
   function test_VouchWhenProjectAttestationIsInvalid() public {
     // Setup voter attestation
     _setupVoterAttestation();
-    buildersManager.validateOptimismVoter(identityAttestation);
+    builderManager.validateOptimismVoter(identityAttestation);
 
     // Setup invalid project attestation
     vm.mockCall(address(eas), abi.encodeWithSignature('isAttestationValid(bytes32)', projectRefId), abi.encode(false));
@@ -48,8 +48,8 @@ contract UnitVouchingTest is BaseTest {
     _mockEASAttestation(projectAttestation, mockProjectAttestation);
 
     // Expect revert
-    vm.expectRevert(IBuildersManager.InvalidProjectUid.selector);
-    buildersManager.vouch(projectAttestation);
+    vm.expectRevert(IBuilderManager.InvalidProjectUid.selector);
+    builderManager.vouch(projectAttestation);
   }
 
   function test_VouchWhenVoterIsNotEligible() public {
@@ -57,8 +57,8 @@ contract UnitVouchingTest is BaseTest {
     _setupProjectAttestation(project, projectAttestation, projectRefId);
 
     // Expect revert since voter is not eligible
-    vm.expectRevert(IBuildersManager.IdAttestationRequired.selector);
-    buildersManager.vouch(projectAttestation);
+    vm.expectRevert(IBuilderManager.IdAttestationRequired.selector);
+    builderManager.vouch(projectAttestation);
   }
 
   function test_VouchWhenProjectAlreadyVouched() public {
@@ -69,13 +69,13 @@ contract UnitVouchingTest is BaseTest {
     _setupVoterAttestation();
 
     // Validate voter
-    buildersManager.validateOptimismVoter(identityAttestation);
+    builderManager.validateOptimismVoter(identityAttestation);
 
     // First vouch should succeed
-    buildersManager.vouch(projectAttestation);
+    builderManager.vouch(projectAttestation);
 
     // Second vouch should fail
-    vm.expectRevert(IBuildersManager.AlreadyVouched.selector);
-    buildersManager.vouch(projectAttestation);
+    vm.expectRevert(IBuilderManager.AlreadyVouched.selector);
+    builderManager.vouch(projectAttestation);
   }
 }

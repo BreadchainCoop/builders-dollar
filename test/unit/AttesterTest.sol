@@ -2,7 +2,7 @@
 pragma solidity 0.8.27;
 
 import {Ownable} from '@oz/access/Ownable.sol';
-import {IBuildersManager} from 'contracts/BuildersManager.sol';
+import {IBuilderManager} from 'contracts/BuilderManager.sol';
 import {BaseTest} from 'test/unit/BaseTest.sol';
 
 contract UnitAttesterTest is BaseTest {
@@ -10,7 +10,7 @@ contract UnitAttesterTest is BaseTest {
     address newAttester = address(0x123);
 
     // Check initial state
-    address[] memory initialAttesters = buildersManager.optimismFoundationAttesters();
+    address[] memory initialAttesters = builderManager.optimismFoundationAttesters();
     bool initiallyIncluded = false;
     for (uint256 i = 0; i < initialAttesters.length; i++) {
       if (initialAttesters[i] == newAttester) {
@@ -21,10 +21,10 @@ contract UnitAttesterTest is BaseTest {
     assertFalse(initiallyIncluded, 'Attester should not be included initially');
 
     // Update attester
-    buildersManager.updateOpFoundationAttester(newAttester, true);
+    builderManager.updateOpFoundationAttester(newAttester, true);
 
     // Check final state
-    address[] memory finalAttesters = buildersManager.optimismFoundationAttesters();
+    address[] memory finalAttesters = builderManager.optimismFoundationAttesters();
     bool finallyIncluded = false;
     for (uint256 i = 0; i < finalAttesters.length; i++) {
       if (finalAttesters[i] == newAttester) {
@@ -35,14 +35,14 @@ contract UnitAttesterTest is BaseTest {
     assertTrue(finallyIncluded, 'Attester should be included after update');
 
     // Test AlreadyUpdated error
-    vm.expectRevert(abi.encodeWithSelector(IBuildersManager.AlreadyUpdated.selector, newAttester));
-    buildersManager.updateOpFoundationAttester(newAttester, true);
+    vm.expectRevert(abi.encodeWithSelector(IBuilderManager.AlreadyUpdated.selector, newAttester));
+    builderManager.updateOpFoundationAttester(newAttester, true);
 
     // Remove attester
-    buildersManager.updateOpFoundationAttester(newAttester, false);
+    builderManager.updateOpFoundationAttester(newAttester, false);
 
     // Check state after removal
-    address[] memory afterRemovalAttesters = buildersManager.optimismFoundationAttesters();
+    address[] memory afterRemovalAttesters = builderManager.optimismFoundationAttesters();
     bool includedAfterRemoval = false;
     for (uint256 i = 0; i < afterRemovalAttesters.length; i++) {
       if (afterRemovalAttesters[i] == newAttester) {
@@ -54,8 +54,8 @@ contract UnitAttesterTest is BaseTest {
   }
 
   function test_UpdateOpFoundationAttesterWhenCalledWithZeroAddress() public {
-    vm.expectRevert(IBuildersManager.ZeroValue.selector);
-    buildersManager.updateOpFoundationAttester(address(0), true);
+    vm.expectRevert(IBuilderManager.ZeroValue.selector);
+    builderManager.updateOpFoundationAttester(address(0), true);
   }
 
   function test_UpdateOpFoundationAttesterWhenCalledByNonOwner() public {
@@ -64,7 +64,7 @@ contract UnitAttesterTest is BaseTest {
 
     vm.prank(nonOwner);
     vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, nonOwner));
-    buildersManager.updateOpFoundationAttester(newAttester, true);
+    builderManager.updateOpFoundationAttester(newAttester, true);
   }
 
   function test_BatchUpdateOpFoundationAttestersWhenCalledWithValidAddresses() public {
@@ -79,7 +79,7 @@ contract UnitAttesterTest is BaseTest {
     statuses[2] = true;
 
     // Check initial state
-    address[] memory initialAttesters = buildersManager.optimismFoundationAttesters();
+    address[] memory initialAttesters = builderManager.optimismFoundationAttesters();
     for (uint256 i = 0; i < attesters.length; i++) {
       bool initiallyIncluded = false;
       for (uint256 j = 0; j < initialAttesters.length; j++) {
@@ -94,10 +94,10 @@ contract UnitAttesterTest is BaseTest {
     }
 
     // Batch update attesters
-    buildersManager.batchUpdateOpFoundationAttesters(attesters, statuses);
+    builderManager.batchUpdateOpFoundationAttesters(attesters, statuses);
 
     // Check final state
-    address[] memory finalAttesters = buildersManager.optimismFoundationAttesters();
+    address[] memory finalAttesters = builderManager.optimismFoundationAttesters();
     for (uint256 i = 0; i < attesters.length; i++) {
       bool finallyIncluded = false;
       for (uint256 j = 0; j < finalAttesters.length; j++) {
@@ -124,8 +124,8 @@ contract UnitAttesterTest is BaseTest {
     statuses[1] = false;
     statuses[2] = true;
 
-    vm.expectRevert(IBuildersManager.InvalidLength.selector);
-    buildersManager.batchUpdateOpFoundationAttesters(attesters, statuses);
+    vm.expectRevert(IBuilderManager.InvalidLength.selector);
+    builderManager.batchUpdateOpFoundationAttesters(attesters, statuses);
   }
 
   function test_BatchUpdateOpFoundationAttestersWhenCalledWithZeroAddress() public {
@@ -139,8 +139,8 @@ contract UnitAttesterTest is BaseTest {
     statuses[1] = true;
     statuses[2] = true;
 
-    vm.expectRevert(IBuildersManager.ZeroValue.selector);
-    buildersManager.batchUpdateOpFoundationAttesters(attesters, statuses);
+    vm.expectRevert(IBuilderManager.ZeroValue.selector);
+    builderManager.batchUpdateOpFoundationAttesters(attesters, statuses);
   }
 
   function test_BatchUpdateOpFoundationAttestersWhenCalledByNonOwner() public {
@@ -152,6 +152,6 @@ contract UnitAttesterTest is BaseTest {
 
     vm.prank(nonOwner);
     vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, nonOwner));
-    buildersManager.batchUpdateOpFoundationAttesters(attesters, statuses);
+    builderManager.batchUpdateOpFoundationAttesters(attesters, statuses);
   }
 }

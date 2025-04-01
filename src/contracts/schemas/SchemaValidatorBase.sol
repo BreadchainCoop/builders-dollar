@@ -2,25 +2,25 @@
 pragma solidity 0.8.27;
 
 import {IEAS} from '@eas/IEAS.sol';
-import {IBuildersManager} from 'interfaces/IBuildersManager.sol';
+import {IBuilderManager} from 'interfaces/IBuilderManager.sol';
 import {ISchemaValidator} from 'interfaces/ISchemaValidator.sol';
 
 contract SchemaValidatorBase is ISchemaValidator {
   /// @inheritdoc ISchemaValidator
   bytes32 public immutable SCHEMA;
   /// @inheritdoc ISchemaValidator
-  IBuildersManager public immutable BUILDERS_MANAGER;
+  IBuilderManager public immutable BUILDERS_MANAGER;
   /// @inheritdoc ISchemaValidator
   IEAS public immutable EAS;
 
   /**
    * @notice Initialize the SchemaValidator contract
    * @param _schema The schema to validate
-   * @param _buildersManager The BuildersManager contract
+   * @param _buildersManager The BuilderManager contract
    */
   constructor(bytes32 _schema, address _buildersManager) {
     SCHEMA = _schema;
-    BUILDERS_MANAGER = IBuildersManager(_buildersManager);
+    BUILDERS_MANAGER = IBuilderManager(_buildersManager);
     EAS = BUILDERS_MANAGER.EAS();
 
     if (EAS.getSchemaRegistry().getSchema(SCHEMA).uid != SCHEMA) revert InvalidSchema();

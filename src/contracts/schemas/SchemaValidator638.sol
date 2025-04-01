@@ -3,7 +3,7 @@ pragma solidity 0.8.27;
 
 import {Attestation} from '@eas/Common.sol';
 import {SchemaValidatorBase} from 'contracts/schemas/SchemaValidatorBase.sol';
-import {IBuildersManager} from 'interfaces/IBuildersManager.sol';
+import {IBuilderManager} from 'interfaces/IBuilderManager.sol';
 
 contract SchemaValidator638 is SchemaValidatorBase {
   /// @notice see SchemaValidatorBase
@@ -13,7 +13,7 @@ contract SchemaValidator638 is SchemaValidatorBase {
   function validateWithSchema(bytes32 _uid) external view override returns (bool _verified, address _recipient) {
     Attestation memory _attestation = EAS.getAttestation(_uid);
     (bytes32 _projectRefId,) = abi.decode(_attestation.data, (bytes32, bytes));
-    IBuildersManager.BuilderManagerSettings memory _settings = BUILDERS_MANAGER.settings();
+    IBuilderManager.BuilderManagerSettings memory _settings = BUILDERS_MANAGER.settings();
     _recipient = _attestation.recipient;
 
     if (_recipient == address(0)) return (false, _recipient);
