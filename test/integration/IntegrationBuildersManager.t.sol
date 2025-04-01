@@ -249,7 +249,7 @@ contract IntegrationBuildersManager is IntegrationBase {
     emit log_named_string('Integration test with Aave passed', 'Success');
   }
 
-  function test_aDAI_yield_accumulation() public {
+  function test_aUSDC_yield_accumulation() public {
     // Track initial balances
     uint256 initialAUsdcBalance = aUSDC.balanceOf(address(obUsdToken));
 
@@ -311,6 +311,53 @@ contract IntegrationBuildersManager is IntegrationBase {
     emit log_named_uint('Final aUSDC balance', finalAUsdcBalance);
     emit log_named_uint('obsUSD supply', obsUsdSupply);
     emit log_named_uint('Yield accrued', yieldAccrued);
+  }
+
+  function test_NoYieldDistribution() public {
+    // Set up projects with vouches
+    _getThreeVouches();
+
+    // Verify project is correctly registered
+    assertEq(builderManager.projectToVouches(projectAtt.recipient), MIN_VOUCHES);
+    assertEq(builderManager.currentProjects().length, 1);
+    assertEq(builderManager.currentProjects()[0], projectAtt.recipient);
+
+    // Set up USDC and mint obUSD, similar to other tests but with minimal amount
+    address usdcWhale = makeAddr('usdcWhale');
+    vm.label(usdcWhale, 'USDC_WHALE');
+    vm.deal(usdcWhale, WHALE_ETH_AMOUNT);
+    vm.startPrank(usdcWhale);
+    wethGateway.depositETH{value: WHALE_ETH_AMOUNT}(OP_AAVE_V3_POOL, usdcWhale, 0);
+
+    // Use a very small amount ($0.000001 worth of USDC)
+    uint256 smallAmount = 1;
+    pool.borrow(OP_USDC, smallAmount, 2, 0, usdcWhale);
+    ERC20(OP_USDC).transfer(owner, smallAmount);
+    vm.stopPrank();
+
+    // Owner mints obUSD with the small amount of USDC
+    vm.startPrank(owner);
+    ERC20(OP_USDC).approve(address(obUsdToken), smallAmount);
+    obUsdToken.mint(smallAmount, address(obUsdToken));
+    vm.stopPrank();
+
+    // Important: We DO NOT generate yield or wait for it to accrue
+    // We just advance time enough to make the cycle ready for distribution
+    vm.warp(block.timestamp + CYCLE_LENGTH + 1);
+
+    // Check that there's no yield accrued
+    uint256 yieldAccrued = obUsdToken.yieldAccrued();
+    assertEq(yieldAccrued, 0, 'Should have zero yield accrued');
+
+    // Distribute yield and check return value
+    vm.startPrank(owner);
+    bool yieldDistributed = builderManager.distributeYield();
+    vm.stopPrank();
+
+    // Verify it returned false since there was no yield to distribute
+    assertFalse(yieldDistributed, 'Should return false when no yield is available');
+
+    emit log_named_string('Zero yield distribution test passed', 'Success');
   }
 
   // === Helper Functions ===

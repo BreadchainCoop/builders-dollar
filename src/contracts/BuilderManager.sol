@@ -145,7 +145,7 @@ contract BuilderManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilderM
   }
 
   /// @inheritdoc IBuilderManager
-  function distributeYield() external {
+  function distributeYield() external returns (bool _yieldIsAvailableToDistribute) {
     uint256 _l = _currentProjects.length;
     if (_l == 0) revert YieldNoProjects();
     if (block.timestamp < _settings.lastClaimedTimestamp + _settings.cycleLength) revert CycleNotReady();
@@ -168,13 +168,19 @@ contract BuilderManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilderM
     if (_l == 0) revert YieldNoProjects();
 
     uint256 _yield = TOKEN.yieldAccrued();
-    TOKEN.claimYield(_yield);
-    uint256 _yieldPerProject = (((_yield * 90 / 100) * _multiplier) / _l) / _multiplier;
+    if (_yield > 0) {
+      TOKEN.claimYield(_yield);
+      uint256 _yieldPerProject = (((_yield * 90 / 100) * _multiplier) / _l) / _multiplier;
 
-    for (uint256 _i; _i < _l; _i++) {
-      TOKEN.TOKEN().transfer(_currentProjects[_i], _yieldPerProject);
+      for (uint256 _i; _i < _l; _i++) {
+        TOKEN.TOKEN().transfer(_currentProjects[_i], _yieldPerProject);
+      }
+      emit YieldDistributed(_yieldPerProject, _currentProjects);
+      _yieldIsAvailableToDistribute = true;
+    } else {
+      emit YieldDistributed(0, _currentProjects);
+      _yieldIsAvailableToDistribute = false;
     }
-    emit YieldDistributed(_yieldPerProject, _currentProjects);
   }
 
   /// @inheritdoc IBuilderManager

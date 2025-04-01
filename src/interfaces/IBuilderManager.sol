@@ -179,8 +179,9 @@ interface IBuilderManager {
 
   /**
    * @notice Distribute the yield to the current projects in the cycle
+   * @return _yieldIsAvailableToDistribute True if the yield is available to distribute
    */
-  function distributeYield() external;
+  function distributeYield() external returns (bool _yieldIsAvailableToDistribute);
 
   /**
    * @notice Register a schema

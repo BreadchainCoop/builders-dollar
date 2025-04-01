@@ -11,22 +11,6 @@ contract UnitYieldTest is BaseTest {
   uint256 public constant MIN_VOUCHES = 3;
   uint256 public constant PROJECT_COUNT = 3;
 
-  // function test_RevertWhenCycleNotReady() public {
-  //   vm.warp(CURRENT_TIME);
-
-  //   // Setup with cycle not ready (last claim was 1 day ago)
-  //   _setupSettings(uint64(CURRENT_TIME - 1 days), uint64(CURRENT_TIME));
-
-  //   // Setup projects with future expiry
-  //   address[] memory projects = _setupProjects(PROJECT_COUNT, CURRENT_TIME + 365 days);
-
-  //   // Setup token operations
-  //   _setupTokenOperations(projects, 1000 ether);
-
-  //   vm.expectRevert(IBuilderManager.CycleNotReady.selector);
-  //   builderManager.distributeYield();
-  // }
-
   function test_DistributeYieldWhenNoProjects() public {
     vm.warp(CURRENT_TIME);
 
@@ -120,28 +104,51 @@ contract UnitYieldTest is BaseTest {
       bytes32 _itemValue = bytes32(uint256(uint160(_projects[i])));
       vm.store(address(builderManager), _itemSlot, _itemValue);
 
+      // Create a UID for each project
+      bytes32 _projectUid = bytes32(uint256(i + 1)); // Use simple incremental UIDs
+
+      // Set up the eligibleProject mapping (slot 11) directly in storage
+      bytes32 _eligibleProjectSlot = keccak256(abi.encode(_projectUid, uint256(11)));
+      vm.store(address(builderManager), _eligibleProjectSlot, bytes32(uint256(uint160(_projects[i]))));
+
+      // Set up the eligibleProjectByUid mapping (slot 12) directly in storage
+      bytes32 _eligibleProjectByUidSlot = keccak256(abi.encode(_projects[i], uint256(12)));
+      vm.store(address(builderManager), _eligibleProjectByUidSlot, _projectUid);
+
       // Store project expiry in projectToExpiry mapping (slot 13)
       bytes32 _expirySlot = keccak256(abi.encode(_projects[i], uint256(13)));
       vm.store(address(builderManager), _expirySlot, bytes32(uint256(_expiryTime)));
 
-      // Setup attestations and vouches
-      bytes32 _projectUid = bytes32(uint256(i + 1)); // Use simple incremental UIDs
-      mockEligibleProject(_projectUid, _projects[i]);
+      // Store project vouches count in projectToVouches mapping (slot 14)
+      bytes32 _vouchesSlot = keccak256(abi.encode(_projects[i], uint256(14)));
+      vm.store(address(builderManager), _vouchesSlot, bytes32(uint256(MIN_VOUCHES)));
 
-      // Mock the project to UID mapping
+      // Also mock the function calls that read these values
+      vm.mockCall(
+        address(builderManager),
+        abi.encodeWithSelector(IBuilderManager.eligibleProject.selector, _projectUid),
+        abi.encode(_projects[i])
+      );
+
       vm.mockCall(
         address(builderManager),
         abi.encodeWithSelector(IBuilderManager.eligibleProjectByUid.selector, _projects[i]),
         abi.encode(_projectUid)
       );
 
-      // Mock the vouches count
       vm.mockCall(
         address(builderManager),
         abi.encodeWithSelector(IBuilderManager.projectToVouches.selector, _projects[i]),
         abi.encode(MIN_VOUCHES)
       );
     }
+
+    // Also mock the currentProjects call to ensure consistency
+    vm.mockCall(
+      address(builderManager), abi.encodeWithSelector(IBuilderManager.currentProjects.selector), abi.encode(_projects)
+    );
+
+    return _projects;
   }
 
   function _setupTokenOperations(

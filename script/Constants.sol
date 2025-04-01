@@ -37,7 +37,7 @@ string constant TEST_obUSD_NAME = 'Test Optimistic Builder Dollar';
 string constant TEST_obUSD_SYMBOL = 'TEST.obUSD';
 
 // Tribute of 10% to Bread Coop
-address constant TEST_OP_BREAD_COOP = 0x9DC0c7AD3b51e76d63cD8DF41a83fFFbB093c15e;
+address constant TEST_OP_BREAD_COOP = 0x7Da3EE698c0C07179C5bA6630aC5c80952744dee;
 
 // EAS Contract (Optimism Chain)
 address constant OP_EAS = 0x4200000000000000000000000000000000000021;
