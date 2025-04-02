@@ -68,6 +68,9 @@ struct DeploymentParams {
  * @dev This contract is intended for use in Scripts and Integration Tests
  */
 contract Common is Script {
+  /// @notice Error for unsupported chains on deployment
+  error UnsupportedChain();
+
   /// @notice BuilderManager contract
   IBuilderManager public builderManager;
   /// @notice BuilderDollar contract
@@ -167,11 +170,11 @@ contract Common is Script {
   }
 
   function _runDeployments(bool _isProduction) internal {
-    obUsdToken = BuilderDollar(_deployBuildersDollar(_isProduction));
+    obUsdToken = BuilderDollar(_deployBuilderDollar(_isProduction));
     _deploymentParams[block.chainid][_isProduction].token = address(obUsdToken);
-    builderManager = IBuilderManager(_deployBuildersManager(_isProduction));
+    builderManager = IBuilderManager(_deployBuilderManager(_isProduction));
     builderManager.initializeSchemas(
-      OP_SCHEMA_599, address(_deploySchemaValidator599()), OP_SCHEMA_638, address(_deploySchemaValidator638())
+      OP_SCHEMA_599, _deploySchemaValidator599(), OP_SCHEMA_638, _deploySchemaValidator638()
     );
     obUsdToken.initializeYieldClaimer(address(builderManager));
 
@@ -181,12 +184,12 @@ contract Common is Script {
     console.log('Deployment complete');
   }
 
-  function _deployBuildersManagerImp() internal returns (address _buildersManagerImp) {
+  function _deployBuilderManagerImp() internal returns (address _buildersManagerImp) {
     _buildersManagerImp = address(new BuilderManager());
   }
 
-  function _deployBuildersManager(bool _isProduction) internal returns (address _buildersManagerProxy) {
-    address _implementation = _deployBuildersManagerImp();
+  function _deployBuilderManager(bool _isProduction) internal returns (address _buildersManagerProxy) {
+    address _implementation = _deployBuilderManagerImp();
 
     DeploymentParams memory _s = _deploymentParams[block.chainid][_isProduction];
 
@@ -201,12 +204,12 @@ contract Common is Script {
     );
   }
 
-  function _deployBuildersDollarImp() internal returns (address _obUsdTokenImp) {
+  function _deployBuilderDollarImp() internal returns (address _obUsdTokenImp) {
     _obUsdTokenImp = address(new BuilderDollar());
   }
 
-  function _deployBuildersDollar(bool _isProduction) internal returns (address _obUsdTokenProxy) {
-    address _implementation = _deployBuildersDollarImp();
+  function _deployBuilderDollar(bool _isProduction) internal returns (address _obUsdTokenProxy) {
+    address _implementation = _deployBuilderDollarImp();
 
     DeploymentParams memory _s = _deploymentParams[block.chainid][_isProduction];
 

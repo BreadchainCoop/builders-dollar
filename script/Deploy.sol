@@ -15,6 +15,7 @@ contract Deploy is Common {
     super.setUp();
     if (block.chainid == OPTIMISM_CHAIN_ID) initialOwner = OP_BREAD_COOP;
     else if (block.chainid == ANVIL_CHAIN_ID) initialOwner = address(vm.addr(PUBLIC_ANVIL_PK));
+    else revert UnsupportedChain();
   }
 
   /**
