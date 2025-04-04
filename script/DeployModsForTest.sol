@@ -23,7 +23,7 @@ contract SetUpForTest is Common {
   }
 }
 
-/// @notice Remove OpenZeppelin `_disableInitializers` from BuilderManager before this script
+/// @notice Remove OpenZeppelin `_disableInitializers` from BuilderManager and obUSD token before this script
 contract DeployImplementationForTest is SetUpForTest {
   /**
    * @notice Deploy the BuilderManager and BuilderDollar implementations
