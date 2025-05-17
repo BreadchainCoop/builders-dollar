@@ -5,6 +5,7 @@ import {IEAS} from '@eas/IEAS.sol';
 import {BuilderDollar} from '@obs-usd-token/BuilderDollar.sol';
 import {Ownable2StepUpgradeable} from '@oz-upgradeable/access/Ownable2StepUpgradeable.sol';
 import {EIP712Upgradeable} from '@oz-upgradeable/utils/cryptography/EIP712Upgradeable.sol';
+import {IERC20} from '@oz/token/ERC20/IERC20.sol';
 import {IBuilderManager} from 'interfaces/IBuilderManager.sol';
 import {ISchemaValidator} from 'interfaces/ISchemaValidator.sol';
 
@@ -175,10 +176,11 @@ contract BuilderManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilderM
     /// @dev only distribute yield when greater than 1 USD-pegged stablecoin
     if (_yieldPerProject > _multiplier) {
       TOKEN.claimYield(_yield);
-
+      TOKEN.TOKEN().approve(address(TOKEN), _yieldPerProject * _l);
       for (uint256 _i; _i < _l; _i++) {
-        TOKEN.TOKEN().transfer(_currentProjects[_i], _yieldPerProject);
+        TOKEN.mint(_yieldPerProject, _currentProjects[_i]);
       }
+
       emit YieldDistributed(_yieldPerProject, _currentProjects);
       _yieldIsAvailableToDistribute = true;
     } else {
