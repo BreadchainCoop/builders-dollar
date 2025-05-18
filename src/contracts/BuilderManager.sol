@@ -160,7 +160,7 @@ contract BuilderManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilderM
         _ejectCount++;
       }
     }
-    for (uint256 _i; _i < _l; _i++) {
+    for (uint256 _i; _i < _ejectCount; _i++) {
       _ejectProject(_projectsToEject[_i]);
     }
 
