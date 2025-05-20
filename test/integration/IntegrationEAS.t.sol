@@ -73,7 +73,7 @@ contract IntegrationEAS is IntegrationBase {
     assertEq(_projectAtt0.schema, referenceAttestation0.schema);
     assertEq(_projectAtt0.time, referenceAttestation0.time);
     assertEq(_projectAtt0.expirationTime, referenceAttestation0.expirationTime);
-    assertEq(_projectAtt0.revocationTime, referenceAttestation0.revocationTime);
+    assertNotEq(_projectAtt0.revocationTime, referenceAttestation0.revocationTime); // this was eventually revoked onchain
     assertEq(_projectAtt0.refUID, referenceAttestation0.refUID);
     assertEq(_projectAtt0.recipient, referenceAttestation0.recipient);
     assertEq(_projectAtt0.attester, referenceAttestation0.attester);
