@@ -160,7 +160,7 @@ contract BuilderManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilderM
         _ejectCount++;
       }
     }
-    for (uint256 _i; _i < _l; _i++) {
+    for (uint256 _i; _i < _ejectCount; _i++) {
       _ejectProject(_projectsToEject[_i]);
     }
 
@@ -175,9 +175,10 @@ contract BuilderManager is EIP712Upgradeable, Ownable2StepUpgradeable, IBuilderM
     /// @dev only distribute yield when greater than 1 USD-pegged stablecoin
     if (_yieldPerProject > _multiplier) {
       TOKEN.claimYield(_yield);
+      TOKEN.TOKEN().approve(address(TOKEN), _yieldPerProject * _l);
 
       for (uint256 _i; _i < _l; _i++) {
-        TOKEN.TOKEN().transfer(_currentProjects[_i], _yieldPerProject);
+        TOKEN.mint(_yieldPerProject, _currentProjects[_i]);
       }
       emit YieldDistributed(_yieldPerProject, _currentProjects);
       _yieldIsAvailableToDistribute = true;
