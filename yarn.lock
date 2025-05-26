@@ -2552,7 +2552,7 @@ obliterator@^2.0.0:
   resolved "https://registry.yarnpkg.com/obliterator/-/obliterator-2.0.5.tgz#031e0145354b0c18840336ae51d41e7d6d2c76aa"
   integrity sha512-42CPE9AhahZRsMNslczq0ctAEtqk8Eka26QofnqC346BZdHDySk3LWka23LI7ULIw11NmltpiLagIq8gBozxTw==
 
-obsUSD-token@BreadchainCoop/obsUSD-token:
+obsUSD-token@BreadchainCoop/obsUSD-token#a5c83bc6c0f41945632b90978466c821da04c7f4:
   version "0.0.0"
   resolved "https://codeload.github.com/BreadchainCoop/obsUSD-token/tar.gz/a5c83bc6c0f41945632b90978466c821da04c7f4"
 

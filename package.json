@@ -39,7 +39,7 @@
     "@ethereum-attestation-service/eas-contracts": "ethereum-attestation-service/eas-contracts",
     "@openzeppelin/contracts": "^5.1.0",
     "@openzeppelin/contracts-upgradeable": "^5.1.0",
-    "obsUSD-token": "BreadchainCoop/obsUSD-token#a1bec0715a0099904b27f64889d2fd0ea8ec2741"
+    "obsUSD-token": "BreadchainCoop/obsUSD-token#a5c83bc6c0f41945632b90978466c821da04c7f4"
   },
   "devDependencies": {
     "@commitlint/cli": "19.3.0",
