@@ -2,6 +2,7 @@
 yarn-error.log
 node_modules
 .DS_STORE
+.vscode
 
 # Foundry files
 cache
@@ -25,7 +26,3 @@ test/invariants/fuzz/echidna_coverage
 
 # Coverage
 lcov.info
-branch_structure.json
-temp_auto_push.bat
-temp_interactive_push.bat
-.gitignore
